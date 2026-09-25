@@ -1,7 +1,6 @@
 # loadcast
 
-**Synthetic multi-carrier industrial energy demand, with the coincidence between
-carriers as an explicit input.**
+**A synthetic multi-carrier industrial energy demand generator**
 
 ```python
 import loadcast
@@ -16,7 +15,7 @@ profiles = loadcast.generate(
 )
 ```
 
-Returns an 8760-row hourly frame of `heat_kw`, `cold_kw` and `elec_kw`.
+Returns an 8760-row hourly or quarter-hourly frame of `heat_kw`, `cold_kw` and `elec_kw`.
 
 ## Why
 
