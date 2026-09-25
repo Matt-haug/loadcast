@@ -1,0 +1,158 @@
+{
+ "compositions": {
+  "_source": "jericho",
+  "industry_aggregate": {
+   "cold": 0.049,
+   "elec": 0.213,
+   "heat": 0.738,
+   "heat_to_cold": 15.0
+  }
+ },
+ "sector_temperatures": {
+  "Chemical": {
+   "process_median_c": 109.6,
+   "process_p25_c": 71.0,
+   "process_p75_c": 129.0,
+   "process_pj_15_200": 354.6,
+   "waste_median_c": 52.1,
+   "waste_pj_15_200": 337.1,
+   "waste_to_process": 0.95
+  },
+  "Food and Beverage": {
+   "process_median_c": 120.9,
+   "process_p25_c": 105.5,
+   "process_p75_c": 180.0,
+   "process_pj_15_200": 193.1,
+   "waste_median_c": 57.0,
+   "waste_pj_15_200": 97.2,
+   "waste_to_process": 0.5
+  },
+  "Paper": {
+   "process_median_c": 140.0,
+   "process_p25_c": 125.0,
+   "process_p75_c": 157.2,
+   "process_pj_15_200": 356.5,
+   "waste_median_c": 45.0,
+   "waste_pj_15_200": 230.9,
+   "waste_to_process": 0.65
+  },
+  "Refinery": {
+   "process_median_c": 275.3,
+   "process_p25_c": 173.4,
+   "process_p75_c": 309.0,
+   "process_pj_15_200": 219.1,
+   "waste_median_c": 89.5,
+   "waste_pj_15_200": 464.9,
+   "waste_to_process": 2.12
+  }
+ },
+ "sources": {
+  "jericho": {
+   "caveat": "Annual shares only. Its hourly series cannot be used: carriers are a fixed scalar times one shared profile, so their correlation is 1.000000 and the composition is identical across all 38 regions to 4e-8 while regional scale varies 17.9x.",
+   "citation": "Priesmann J, Nolting L, Kockel C, Praktiknjo A. Time series of useful energy consumption patterns for energy system modeling (JERICHO-E-usage). Scientific Data 8:148, 2021. doi:10.1038/s41597-021-00907-w",
+   "kind": "useful energy by carrier, annual totals",
+   "peer_reviewed": true,
+   "scope": "German industry, 2019, 38 NUTS2 regions"
+  },
+  "rehfeldt": {
+   "caveat": "Digitised from Fig. 16 to about +-5 percentage points. Its own two datasets disagree by more than the subsectors differ from one another, so this is reported as a range and never as a point.",
+   "citation": "Rehfeldt M, Fleiter T, Toro F. A bottom-up estimation of the heating and cooling demand in European industry. Energy Efficiency 11:1057-1082, 2018. doi:10.1007/s12053-017-9571-y",
+   "kind": "heat by temperature band and cooling, shares of subsector demand",
+   "peer_reviewed": true,
+   "scope": "UK industry, 7 subsectors, two datasets (ECUK and FORECAST)"
+  },
+  "tno": {
+   "caveat": "No electricity and essentially no refrigeration. Its waste heat is rejected above ambient and is a heat pump source, not a cooling demand.",
+   "citation": "Marina A, Spoelstra S, Zondag HA, Wemmers AK. An estimation of the European industrial heat pump market potential. Renewable and Sustainable Energy Reviews 139:110545, 2021. doi:10.1016/j.rser.2020.110545",
+   "kind": "process and waste heat quantities with stream temperatures",
+   "peer_reviewed": true,
+   "scope": "EU-28, 2016 production, 4 sectors, ~66 products"
+  }
+ },
+ "subsector_heat_to_cold": {
+  "Chemicals": {
+   "ECUK": {
+    "cold_pct": 13.0,
+    "heat_pct": 87.0,
+    "heat_to_cold": 6.7
+   },
+   "FORECAST": {
+    "cold_pct": 2.0,
+    "heat_pct": 98.0,
+    "heat_to_cold": 49.0
+   }
+  },
+  "Food, beverages and tobacco": {
+   "ECUK": {
+    "cold_pct": 8.0,
+    "heat_pct": 92.0,
+    "heat_to_cold": 11.5
+   },
+   "FORECAST": {
+    "cold_pct": 3.0,
+    "heat_pct": 97.0,
+    "heat_to_cold": 32.3
+   }
+  },
+  "Iron and steel, non-ferrous metals": {
+   "ECUK": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   },
+   "FORECAST": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   }
+  },
+  "Machinery and Transport": {
+   "ECUK": {
+    "cold_pct": 2.0,
+    "heat_pct": 98.0,
+    "heat_to_cold": 49.0
+   },
+   "FORECAST": {
+    "cold_pct": 2.0,
+    "heat_pct": 98.0,
+    "heat_to_cold": 49.0
+   }
+  },
+  "Non-metallic minerals": {
+   "ECUK": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   },
+   "FORECAST": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   }
+  },
+  "Other industry": {
+   "ECUK": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   },
+   "FORECAST": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   }
+  },
+  "Paper": {
+   "ECUK": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   },
+   "FORECAST": {
+    "cold_pct": 0.0,
+    "heat_pct": 100.0,
+    "heat_to_cold": null
+   }
+  }
+ }
+}

@@ -1,0 +1,21 @@
+site_name: loadcast
+site_description: Synthetic multi-carrier industrial energy demand profiles
+repo_url: https://github.com/Matt-haug/loadcast
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+markdown_extensions:
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - tables
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+nav:
+  - Home: index.md
+  - Usage: usage.md
+  - Mathematics: mathematics.md

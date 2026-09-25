@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "loadcast: synthetic multi-carrier industrial energy demand profiles"
+abstract: >-
+  Generates hourly heat, cold and electricity demand for an industrial site
+  from a handful of observable inputs, with the correlation and the lag between
+  carriers as explicit parameters rather than artefacts of the construction.
+type: software
+authors:
+  - given-names: Matteo
+    family-names: Hauglustaine
+    email: matteo@abeo.be
+    affiliation: "UCLouvain"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+version: 0.1.0
+date-released: "2026-09-25"
+license: MIT
+repository-code: "https://github.com/Matt-haug/loadcast"
+keywords:
+  - energy demand
+  - load profile
+  - synthetic data
+  - industrial energy
+  - multi-carrier
+  - time series
