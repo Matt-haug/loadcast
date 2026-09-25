@@ -10,9 +10,10 @@ authors:
   - given-names: Mattéo
     family-names: Hauglustaine
     email: matteo.hauglustaine@uclouvain.be
-    affiliation: "UCLouvain", "University of Mons (UMONS)"
+    affiliation: "UCLouvain"
     orcid: "https://orcid.org/0009-0003-0990-3775"
 version: 0.1.0
+doi: https://doi.org/10.5281/zenodo.22961301
 date-released: "2026-09-25"
 license: MIT
 repository-code: "https://github.com/Matt-haug/loadcast"
