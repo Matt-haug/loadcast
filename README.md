@@ -124,9 +124,8 @@ Requires Python 3.9+, numpy and pandas. Nothing else.
 
 ## Documentation
 
-- [Mathematics](docs/mathematics.md) — every formula, derived, with worked numbers
-- [Usage](docs/usage.md) — recipes
-- [Index](docs/index.md)
+A detailed documentation of the library is available at: https://loadcast.readthedocs.io/en/latest/
+Refer to that documentation for usage instructions and examples and details of the method.
 
 ## Calibration data
 
