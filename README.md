@@ -69,8 +69,7 @@ register_class(mine)
 profiles = loadcast.generate(process_class="my_plant", annual_mwh=5_000)
 ```
 
-The inversion from observables to generator parameters is closed form — no
-optimiser, no starting guess. See [the mathematics](docs/mathematics.md).
+The inversion from observables to generator parameters is closed form. See [mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/) for details.
 
 ## What it guarantees exactly
 
@@ -125,6 +124,7 @@ Requires Python 3.9+, numpy and pandas. Nothing else.
 ## Documentation
 
 A detailed documentation of the library is available at: https://loadcast.readthedocs.io/en/latest/
+
 Refer to that documentation for usage instructions and examples and details of the method.
 
 ## Calibration data
