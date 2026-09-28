@@ -168,10 +168,12 @@ def step_hours(index: pd.DatetimeIndex) -> float:
     """
     if len(index) < 2:
         return 1.0
-    deltas = np.diff(index.view("int64"))
+    # Through seconds rather than the raw integers: pandas 3 stores timestamps
+    # at microsecond resolution by default, pandas 2 at nanosecond.
+    deltas = np.asarray((index[1:] - index[:-1]).total_seconds())
     # Median rather than the first gap, so a daylight-saving seam or a single
     # missing step does not redefine the resolution.
-    return float(np.median(deltas)) / 3.6e12
+    return float(np.median(deltas)) / 3600.0
 
 
 def rescale_persistence(phi_hourly: float, hours_per_step: float) -> float:
