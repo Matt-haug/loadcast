@@ -17,6 +17,12 @@ profiles = loadcast.generate(
 
 Returns an 8760-row hourly or quarter-hourly frame of `heat_kw`, `cold_kw` and `elec_kw`.
 
+![Heat-cold cross-correlogram: the published disaggregated construction peaks at exactly 1.000; loadcast peaks at the 0.60 asked for](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/07_coincidence.png)
+
+*Left: every carrier as a fixed multiple of one shared profile, the construction behind published
+disaggregated data, which is correlated at 1 by algebra. Right: `loadcast` with `carrier_correlation=0.60`.
+More in the [tutorial notebook](https://github.com/Matt-haug/loadcast/blob/main/examples/01_tutorial.ipynb).*
+
 ## Why
 
 Designing anything with storage against an industrial site needs to know not
