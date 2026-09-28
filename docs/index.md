@@ -19,6 +19,7 @@ profiles = loadcast.generate(
 ## Where to go
 
 - **[Usage](usage.md)** — recipes, from the one-liner to fitting your own site.
+- **[Examples](examples.md)** — the figure gallery from the tutorial notebook.
 - **[Mathematics](mathematics.md)** — every formula derived, with worked
   numbers and a nomenclature table. Each derivation has a matching test.
 

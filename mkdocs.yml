@@ -18,4 +18,5 @@ extra_javascript:
 nav:
   - Home: index.md
   - Usage: usage.md
+  - Examples: examples.md
   - Mathematics: mathematics.md
