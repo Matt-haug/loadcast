@@ -1,7 +1,7 @@
 [![PyPI version](https://shields.io)](https://pypi.org)
 [![Documentation Status](https://readthedocs.org)](https://readthedocs.io)
 [![Build Status](https://shields.io)](https://github.com)
-[![License](https://img.shields.io/github/license/{Matt-haug}/{repository})](https://github.com/{Matt-haug}/{loadcast}/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/{Matt-haug}/{repository})](https://github.com/{Matt-haug}/{loadcast}/main/LICENSE)
 [![DOI](https://zenodo.org/badge/1387496815.svg)](https://doi.org/10.5281/zenodo.22961300)
 
 # loadcast
