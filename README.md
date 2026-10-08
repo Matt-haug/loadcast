@@ -1,3 +1,9 @@
+[![PyPI version](https://shields.io)](https://pypi.org)
+[![Documentation Status](https://readthedocs.org)](https://readthedocs.io)
+[![Build Status](https://shields.io)](https://github.com)
+[![License](https://shields.io)](https://github.com)
+[![DOI](https://zenodo.org)](https://zenodo.org)
+
 # loadcast
 
 **A synthetic multi-carrier industrial energy demand generator**
