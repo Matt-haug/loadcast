@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=77", "wheel"]
+requires = ["setuptools>=77", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "loadcast"
-version = "0.1.1"
+dynamic = ["version"]
 description = "Synthetic multi-carrier industrial energy demand profiles with controllable cross-carrier structure"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -61,3 +61,8 @@ loadcast = ["data/*.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.setuptools_scm]
+# The version is the git tag of the release (v0.1.2 -> 0.1.2). A build with no
+# git history at all, such as an unpacked GitHub zip, falls back to this.
+fallback_version = "0.0.0"

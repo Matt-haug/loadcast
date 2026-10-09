@@ -20,10 +20,9 @@ authors:
     family-names: Contino
     affiliation: "UCLouvain"
     orcid: "https://orcid.org/0000-0002-8341-4350"
-version: 0.1.1
 doi: 10.5281/zenodo.22961300
-date-released: "2026-10-09"
 license: MIT
+# Version and release date come from each GitHub release, which Zenodo archives.
 repository-code: "https://github.com/Matt-haug/loadcast"
 keywords:
   - energy demand

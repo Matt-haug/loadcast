@@ -93,3 +93,15 @@ disclosure and the level of detail expected.
 
 A contribution you have not read and understood is not a contribution; it is a
 review burden transferred to someone else.
+
+## Releasing
+
+The version comes from the git tag; there is no version number to edit.
+
+1. Move the `[Unreleased]` entries of `CHANGELOG.md` under the new version.
+2. Publish a GitHub release whose tag is the version, prefixed with `v`
+   (`v0.1.2`).
+
+The publish workflow builds that version and uploads it to PyPI, and Zenodo
+archives the release with its own DOI. Between releases, a development install
+reports a version like `0.1.3.dev4+gabc1234`.

@@ -5,6 +5,10 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+### Changed
+- The version now comes from the git tag of each release (setuptools-scm).
+- Ward De Paepe and Francesco Contino added as authors.
+
 ## [0.1.1] - 2026-10-09
 
 First release on PyPI.
