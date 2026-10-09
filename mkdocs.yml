@@ -3,6 +3,8 @@ site_description: Synthetic multi-carrier industrial energy demand profiles
 repo_url: https://github.com/Matt-haug/loadcast
 theme:
   name: material
+  logo: assets/loadcast-icon.svg
+  favicon: assets/favicon.png
   features:
     - navigation.sections
     - content.code.copy

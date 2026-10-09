@@ -5,6 +5,10 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+### Added
+- A logo: the camel - a two-shift day of industrial load with an eye - on the
+  README, the documentation and the social preview (`docs/assets/`).
+
 ### Changed
 - The version now comes from the git tag of each release (setuptools-scm).
 - Ward De Paepe and Francesco Contino added as authors.

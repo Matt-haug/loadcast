@@ -1,4 +1,4 @@
-# loadcast
+<p align="center"><img src="assets/loadcast-lockup.svg" alt="loadcast" width="440"></p>
 
 Synthetic multi-carrier industrial energy demand, with the coincidence between
 carriers as an explicit input.
