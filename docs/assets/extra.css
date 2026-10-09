@@ -1,0 +1,47 @@
+/* Neutral and quiet: ink on white, the package colour only for links and
+   highlights. Manrope for reading, IBM Plex Mono (the logo's face) for short
+   labels and code. */
+:root {
+  --md-primary-fg-color: #ffffff;
+  --md-primary-fg-color--light: #ffffff;
+  --md-primary-fg-color--dark: #f3f4f6;
+  --md-primary-bg-color: #111827;
+  --md-primary-bg-color--light: #4b5563;
+  --md-accent-fg-color: #C2410C;
+  --md-accent-fg-color--transparent: #C2410C14;
+  --md-typeset-a-color: #C2410C;
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #111827;
+  --md-primary-fg-color--light: #111827;
+  --md-primary-fg-color--dark: #0b1120;
+  --md-primary-bg-color: #f9fafb;
+  --md-primary-bg-color--light: #d1d5db;
+  --md-default-bg-color: #0f1623;
+  --md-accent-fg-color: #FB923C;
+  --md-accent-fg-color--transparent: #FB923C1f;
+  --md-typeset-a-color: #FB923C;
+}
+
+/* A hairline instead of a coloured bar. */
+.md-header { box-shadow: none; border-bottom: 1px solid var(--md-default-fg-color--lightest); }
+.md-tabs { background: transparent; color: var(--md-default-fg-color--light); }
+
+/* The logo's face for the few words that act as labels. */
+.md-header__title, .md-nav__title, .md-typeset h1,
+.md-typeset .doc-heading code, .md-typeset .doc-signature {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 { font-weight: 600; color: var(--md-default-fg-color); }
+.md-typeset h2, .md-typeset h3 { font-weight: 700; letter-spacing: -0.01em; }
+.md-typeset { line-height: 1.7; }
+.md-typeset code { font-size: 0.86em; }
+
+/* Tables and admonitions without heavy colour. */
+.md-typeset table:not([class]) { border: 1px solid var(--md-default-fg-color--lightest); box-shadow: none; }
+.md-typeset table:not([class]) th { background: var(--md-default-fg-color--lightest); }
+.md-typeset .admonition, .md-typeset details { box-shadow: none; border-width: 0 0 0 2px; }
+
+/* API reference: a quiet rule between entries. */
+.md-typeset .doc-object { border-top: 1px solid var(--md-default-fg-color--lightest); padding-top: 0.6rem; }
