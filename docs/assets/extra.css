@@ -1,7 +1,7 @@
 /* Quiet and scientific: ink on a faint wash of the package colour, the colour
    itself for the header rule, links, section headings and highlights.
    Manrope for reading, IBM Plex Mono (the logo's face) for short labels and code. */
-:root {
+:root, [data-md-color-scheme="default"] {
   --pkg: #C2410C;
   --pkg-deep: #7C2D12;
   --pkg-soft: #C2410C12;
