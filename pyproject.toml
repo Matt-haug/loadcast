@@ -9,10 +9,15 @@ description = "Synthetic multi-carrier industrial energy demand profiles with co
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
+# Names only, so all three appear together as authors on PyPI; an email would
+# move a name to the separate Author-email field. The contact is the maintainer.
 authors = [
-    { name = "Matteo Hauglustaine", email = "matteo@abeo.be" },
+    { name = "Matteo Hauglustaine" },
     { name = "Ward De Paepe" },
     { name = "Francesco Contino" },
+]
+maintainers = [
+    { name = "Matteo Hauglustaine", email = "matteo@abeo.be" },
 ]
 keywords = [
     "energy",

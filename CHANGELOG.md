@@ -5,6 +5,10 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+### Fixed
+- PyPI listed the co-authors as the authors and the first author only as
+  an email; all three are now authors, with a maintainer contact.
+
 ## [0.1.3] - 2026-10-09
 
 ### Added
