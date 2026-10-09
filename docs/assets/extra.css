@@ -61,3 +61,9 @@
 /* API reference: names in the deep colour, a quiet rule between entries. */
 .md-typeset .doc-heading code { color: var(--pkg-deep); }
 .md-typeset .doc-object { border-top: 1px solid var(--md-default-fg-color--lightest); padding-top: 0.6rem; }
+
+/* Header logo: the light mark, wider than tall, and its light-ink twin in dark
+   mode (same place in the mobile drawer). */
+.md-header__button.md-logo img, .md-nav__button.md-logo img { height: 1.5rem; width: auto; }
+[data-md-color-scheme="slate"] .md-header__button.md-logo img,
+[data-md-color-scheme="slate"] .md-nav__button.md-logo img { content: url("loadcast-header-dark.svg"); }
