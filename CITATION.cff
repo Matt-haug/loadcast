@@ -12,9 +12,9 @@ authors:
     email: matteo.hauglustaine@uclouvain.be
     affiliation: "UCLouvain"
     orcid: "https://orcid.org/0009-0003-0990-3775"
-version: 0.1.0
-doi: https://doi.org/10.5281/zenodo.22961301
-date-released: "2026-09-25"
+version: 0.1.1
+doi: 10.5281/zenodo.22961300
+date-released: "2026-10-09"
 license: MIT
 repository-code: "https://github.com/Matt-haug/loadcast"
 keywords:

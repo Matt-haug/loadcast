@@ -148,14 +148,14 @@ this repository.
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+Issues and pull requests are welcome — see [CONTRIBUTING.md](https://github.com/Matt-haug/loadcast/blob/main/CONTRIBUTING.md)
 for scope, what a test looks like here, and support expectations. Reports that
 the generated profiles disagree with a real site you have measured are
 especially welcome: the calibration archive is small, and that is the package's
 main limitation.
 
-This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md).
-Generative AI was used in building it; see [AI_USAGE.md](AI_USAGE.md).
+This project follows the [Contributor Covenant](https://github.com/Matt-haug/loadcast/blob/main/CODE_OF_CONDUCT.md).
+Generative AI was used in building it; see [AI_USAGE.md](https://github.com/Matt-haug/loadcast/blob/main/AI_USAGE.md).
 
 ## Citing
 
@@ -164,5 +164,5 @@ archived on Zenodo with a DOI.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE). Changes are recorded in
-[CHANGELOG.md](CHANGELOG.md).
+MIT — see [LICENSE](https://github.com/Matt-haug/loadcast/blob/main/LICENSE). Changes are recorded in
+[CHANGELOG.md](https://github.com/Matt-haug/loadcast/blob/main/CHANGELOG.md).

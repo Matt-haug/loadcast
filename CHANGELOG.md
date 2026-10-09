@@ -5,6 +5,19 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-09
+
+First release on PyPI.
+
+### Fixed
+- The bundled calibration data could not be read on Python 3.9:
+  `loadcast.data` is now a regular package rather than a namespace package.
+- Time-step detection under pandas 3, which stores timestamps at microsecond
+  rather than nanosecond resolution.
+
+### Added
+- Tutorial notebook and an examples gallery in the documentation.
+
 ## [0.1.0] - 2026-09-25
 
 First public release.
@@ -40,5 +53,6 @@ First public release.
 - Refitting a class on generated output degenerates. See the warning on
   `class_from_observations`.
 
-[Unreleased]: https://github.com/Matt-haug/loadcast/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Matt-haug/loadcast/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Matt-haug/loadcast/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Matt-haug/loadcast/releases/tag/v0.1.0
