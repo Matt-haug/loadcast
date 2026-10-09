@@ -1,5 +1,5 @@
 [![PyPI version](https://img.shields.io/pypi/v/loadcast)](https://pypi.org/project/loadcast/)
-[![Documentation Status](https://readthedocs.org/projects/loadcast/badge/?version=latest)](https://loadcast.readthedocs.io/en/latest/)
+[![Documentation Status](https://img.shields.io/readthedocs/loadcast)](https://loadcast.readthedocs.io/en/latest/)
 [![Build Status](https://github.com/Matt-haug/loadcast/actions/workflows/tests.yml/badge.svg)](https://github.com/Matt-haug/loadcast/actions/workflows/tests.yml)
 [![License](https://img.shields.io/github/license/Matt-haug/loadcast)](https://github.com/Matt-haug/loadcast/blob/main/LICENSE)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22961300-blue)](https://doi.org/10.5281/zenodo.22961300)
