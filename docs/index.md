@@ -16,6 +16,10 @@ profiles = loadcast.generate(
 )
 ```
 
+```bash
+pip install loadcast
+```
+
 ## Where to go
 
 - **[Usage](usage.md)** — recipes, from the one-liner to fitting your own site.

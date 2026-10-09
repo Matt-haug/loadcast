@@ -8,12 +8,20 @@ tags:
   - industrial energy
   - time series
 authors:
-  - name: Matteo Hauglustaine
-    orcid: 0000-0000-0000-0000
+  - name: Mattéo Hauglustaine
+    orcid: 0009-0003-0990-3775
+    affiliation: "1, 2"
+  - name: Ward De Paepe
+    orcid: 0000-0001-5008-2946
+    affiliation: 2
+  - name: Francesco Contino
+    orcid: 0000-0002-8341-4350
     affiliation: 1
 affiliations:
   - name: Institute of Mechanics, Materials and Civil Engineering, UCLouvain, Belgium
     index: 1
+  - name: University of Mons (UMONS), Belgium
+    index: 2
 date: 25 September 2026
 bibliography: paper.bib
 ---

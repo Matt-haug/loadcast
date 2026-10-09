@@ -11,6 +11,8 @@ requires-python = ">=3.9"
 license = "MIT"
 authors = [
     { name = "Matteo Hauglustaine", email = "matteo@abeo.be" },
+    { name = "Ward De Paepe" },
+    { name = "Francesco Contino" },
 ]
 keywords = [
     "energy",

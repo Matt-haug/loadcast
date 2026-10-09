@@ -10,8 +10,16 @@ authors:
   - given-names: Mattéo
     family-names: Hauglustaine
     email: matteo.hauglustaine@uclouvain.be
-    affiliation: "UCLouvain"
+    affiliation: "UCLouvain; UMONS"
     orcid: "https://orcid.org/0009-0003-0990-3775"
+  - given-names: Ward
+    family-names: De Paepe
+    affiliation: "UMONS"
+    orcid: "https://orcid.org/0000-0001-5008-2946"
+  - given-names: Francesco
+    family-names: Contino
+    affiliation: "UCLouvain"
+    orcid: "https://orcid.org/0000-0002-8341-4350"
 version: 0.1.1
 doi: 10.5281/zenodo.22961300
 date-released: "2026-10-09"

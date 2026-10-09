@@ -1,4 +1,4 @@
-[![PyPI version](https://img.shields.io/pypi/v/loadcast)](https://pypi.org/project/loadcast/)
+[![PyPI version](https://img.shields.io/pypi/v/loadcast?label=PyPI)](https://pypi.org/project/loadcast/)
 [![Documentation Status](https://img.shields.io/readthedocs/loadcast)](https://loadcast.readthedocs.io/en/latest/)
 [![Build Status](https://github.com/Matt-haug/loadcast/actions/workflows/tests.yml/badge.svg)](https://github.com/Matt-haug/loadcast/actions/workflows/tests.yml)
 [![License](https://img.shields.io/github/license/Matt-haug/loadcast)](https://github.com/Matt-haug/loadcast/blob/main/LICENSE)
