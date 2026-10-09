@@ -5,9 +5,18 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-09
+
 ### Added
 - A logo: the camel - a two-shift day of industrial load with an eye - on the
   README, the documentation and the social preview (`docs/assets/`).
+- An API reference page in the documentation, generated from the docstrings.
+
+### Changed
+- The documentation is restyled to match the logo: Manrope for text, IBM Plex
+  Mono for code and titles, the package colour in moderation, a dark mode.
+
+## [0.1.2] - 2026-10-09
 
 ### Changed
 - The version now comes from the git tag of each release (setuptools-scm).
@@ -61,6 +70,8 @@ First public release.
 - Refitting a class on generated output degenerates. See the warning on
   `class_from_observations`.
 
-[Unreleased]: https://github.com/Matt-haug/loadcast/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Matt-haug/loadcast/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/Matt-haug/loadcast/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/Matt-haug/loadcast/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Matt-haug/loadcast/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Matt-haug/loadcast/releases/tag/v0.1.0
