@@ -3,59 +3,13 @@
 A metered series gives one demand; `loadcast` gives one per set of inputs, in
 about a second. Two kinds of study become cheap: sweeping one input to see what
 it does to a design, and sampling uncertain inputs to see what they do to it.
-`examples/02_uncertainty.py` runs the second for a food plant.
+This page runs both on one site. `examples/02_uncertainty.py` runs the sampled
+study, and `examples/build_doc_figures.py` draws the figures.
 
-The examples below report the **24-hour drift** between heat and cold
-(`loadcast.integrated_drift`), because it is what a store between the two
-carriers responds to. Each carrier is divided by its own mean, and the gap
-between the two is summed over every 24-hour window; the drift is the mean
-absolute value of that sum. Its unit is hours of mean demand: a drift of 3 means
-that over a typical day, the two carriers drift apart by three hours' worth of
-their mean demand. In a real study, replace it with the outputs of your own
-design model.
+## The example site
 
-## One input at a time
-
-Varying one input while holding the others fixed, the seed included, shows what
-that input does. Here the cold demand's lag behind heat grows from none to a
-day:
-
-```python
-import loadcast
-
-drift = {}
-for lag in (0, 3, 6, 12, 24):
-    profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=20.0, elec_share=0.2,
-                                 carrier_correlation=0.75, carrier_lag_h={"cold": lag})
-    drift[lag] = loadcast.integrated_drift(profiles["heat_kw"], profiles["cold_kw"],
-                                           window_h=24)
-```
-
-| cold lag (h) | 0 | 3 | 6 | 12 | 24 |
-|---|---|---|---|---|---|
-| 24-hour drift (h) | 3.17 | 3.25 | 3.45 | 3.89 | 4.58 |
-
-Hold `carrier_correlation` fixed while sweeping the lag. It is defined at peak
-alignment, the offset at which the carriers match best, so the sweep then
-changes their timing only. Defined at zero offset, each step of the sweep would
-also change how tightly the carriers move together, and the result could not be
-attributed to the lag.
-
-Sweeping the correlation instead, at no lag, moves the drift further:
-
-| carrier correlation | 0.45 | 0.60 | 0.75 | 0.90 |
-|---|---|---|---|---|
-| 24-hour drift (h) | 4.71 | 4.06 | 3.17 | 2.03 |
-
-Keep the correlation above the process class's floor,
-`loadcast.correlation_floor(process_class)` (0.434 for `semi_continuous`). The
-carriers share a calendar, so they are correlated at least that much even when
-their fluctuations are independent, and no setting delivers less.
-
-## Sampling uncertain inputs
-
-Give each uncertain input a range, sample the ranges, and generate one year of
-demand per sample. For a semi-continuous food plant:
+The site is a semi-continuous food plant using 10 GWh a year, with four
+uncertain inputs:
 
 | input | low | high | from |
 |---|---|---|---|
@@ -68,8 +22,73 @@ A branch's published range does not place a site within it: of three metered
 food plants, none fell inside the range for its own branch. These ranges start
 a study; widen them when nothing more is known about the site.
 
-Sample the box uniformly, or with a Sobol sequence, which covers it more evenly
-than random draws:
+Three outputs stand in for those of a design model: the heat and cold peaks,
+which size the equipment, and the **24-hour drift** between heat and cold
+(`loadcast.integrated_drift`), which is what a store between the two carriers
+responds to. Each carrier is divided by its own mean, and the gap between the
+two is summed over every 24-hour window; the drift is the mean absolute value
+of that sum. Its unit is hours of mean demand: a drift of 3 means that over a
+typical day, the two carriers drift apart by three hours' worth of their mean
+demand. In a real study, replace these with the outputs of your own design
+model.
+
+## One input at a time
+
+Varying one input while holding the others fixed shows what that input does.
+Here each input runs over its range while the others stay at the middle of
+theirs:
+
+```python
+import loadcast
+
+middle = dict(heat_to_cold=21.9, elec_share=0.21, carrier_correlation=0.675,
+              cold_lag_h=6)
+
+def drift(heat_to_cold, elec_share, carrier_correlation, cold_lag_h, seed=1):
+    profiles = loadcast.generate(
+        annual_mwh=10_000, heat_to_cold=heat_to_cold, elec_share=elec_share,
+        process_class="semi_continuous", carrier_correlation=carrier_correlation,
+        carrier_lag_h={"cold": cold_lag_h}, seed=seed)
+    return loadcast.integrated_drift(profiles["heat_kw"], profiles["cold_kw"],
+                                     window_h=24)
+
+lag_sweep = {lag: drift(**{**middle, "cold_lag_h": lag}) for lag in range(0, 13, 2)}
+```
+
+![Each output against each input, swept over its range with the others at the middle of theirs, with a band over five seeds](assets/figures/uncertainty_one_at_a_time.png)
+
+*Each input swept over its range, the others held at the dotted middle. Each
+row shares its scale, so the slopes compare directly. The band spans five
+seeds; the peaks have none.*
+
+Each output answers to different inputs. The shares set the peaks: the heat
+peak falls from 2341 to 1960 kW as the electricity share rises across its
+range, and the cold peak from 180 to 68 kW as the heat-to-cold ratio does. The
+coupling between carriers leaves the peaks untouched, because the cap on the
+peak holds each carrier at its mean divided by the class's load factor, whatever
+the seed. The drift is the reverse: it divides each carrier by its own mean, so
+the shares cannot move it, and it answers to the coupling alone. It falls from
+4.9 to 2.6 hours as the correlation rises, and grows from 3.7 to 4.2 hours as
+the lag does.
+
+The seed band puts these effects in proportion. Five seeds spread the drift by
+up to 0.4–0.65 hours: small next to the correlation's effect, but as large as
+the lag's. A conclusion about the lag therefore needs several seeds; one about
+the correlation does not.
+
+Two rules apply to these sweeps. Hold `carrier_correlation` fixed while
+sweeping the lag: it is defined at the offset where the carriers match best, so
+the sweep then changes their timing only. And keep the correlation above the
+process class's floor, `loadcast.correlation_floor(process_class)` (0.434 for
+`semi_continuous`, shaded in the figure). The carriers share a calendar, so
+they are correlated at least that much even when their fluctuations are
+independent, and no setting delivers less.
+
+## Sampling uncertain inputs
+
+Sampling the four ranges at once gives one year of demand per sample. Sample
+the box uniformly, or with a Sobol sequence, which covers it more evenly than
+random draws:
 
 ```python
 from scipy.stats import qmc        # scipy is not a loadcast dependency
@@ -85,14 +104,23 @@ for heat_to_cold, elec_share, correlation, lag in samples:
         carrier_lag_h={"cold": int(round(lag))}, seed=1))
 ```
 
-The 32 years take about ten seconds. Each then goes to the design model. The
-example script reports the spread of three outputs instead:
+The 32 years take about ten seconds. Each then goes to the design model; here,
+to the three outputs:
+
+![One week of cold demand for 32 sampled years, and the spread of the heat peak, cold peak and 24-hour drift across them](assets/figures/uncertainty_samples.png)
+
+*Left: the same week in each of the 32 sampled years. Right: each output's 32
+values, with lines at the 5th percentile, the median and the 95th percentile.*
 
 | output | P05 | median | P95 |
 |---|---|---|---|
 | heat peak (kW) | 1967 | 2155 | 2313 |
 | cold peak (kW) | 70 | 99 | 160 |
 | 24-hour drift (h) | 2.70 | 3.87 | 4.62 |
+
+The cold demand varies mostly in level, set by the heat-to-cold ratio, while
+the weekly rhythm of the semi-continuous class stays: high on weekdays, low at
+the weekend.
 
 Three cautions apply. **Use the same seed in every sample**, so that the spread
 comes from the inputs alone; the next section shows what a new seed per sample
@@ -103,8 +131,18 @@ correlation floor.
 
 ## Which inputs matter
 
-A polynomial chaos expansion turns the samples into a ranking of the inputs. It
-approximates each output by a polynomial in the inputs,
+Plotting an output against each input shows roughly which inputs drive it. The
+drift of the 32 samples follows the correlation closely and the lag loosely,
+and scatters without a trend against the two shares:
+
+![The drift of the 32 samples against each input, and the total Sobol index of each input for several seeds](assets/figures/uncertainty_sensitivity.png)
+
+*Top: the drift of each sample against each input. Bottom: each input's total
+Sobol index, one dot per study: four studies with one seed each, and one with a
+new seed in every sample.*
+
+A polynomial chaos expansion puts a number on that ranking. It approximates
+each output by a polynomial in the inputs,
 
 $$y(\mathbf x) \approx \sum_{\boldsymbol\alpha \in \mathcal A} c_{\boldsymbol\alpha}\,
 \Psi_{\boldsymbol\alpha}(\mathbf x)$$
@@ -158,8 +196,9 @@ then changed in every sample:
 The drift divides each carrier by its own mean, so it cannot depend on the
 shares, and their indices should be zero. With the seed fixed they are, and the
 leave-one-out error is 13 to 34 times smaller. With a new seed per sample, the
-error rises and the shares pick up a small false effect. The ranking holds in every
-row, but the lag's index moves between 0.08 and 0.14 from one seed to the next.
+error rises and the shares pick up a small false effect. The ranking holds in
+every study, but the lag's index moves between 0.08 and 0.14 from one seed to
+the next: the spread of the dots in the figure.
 
 So use the same seed in every sample, then repeat the whole study with a few
 other seeds, and report the spread of the indices across them. Read the

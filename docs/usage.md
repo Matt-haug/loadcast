@@ -31,6 +31,12 @@ class and keeping the one that gives the answer you expected.
 | `campaign` | long runs separated by real shutdowns | chemical campaigns |
 | `batch` | strongly bimodal, with most hours near zero | roasting, batch kilns |
 
+![A fortnight of heat demand in each of the four process classes](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/06_process_classes.png)
+
+*Two weeks of heat demand in each class, at the same annual energy. LF is the
+load factor, CV the coefficient of variation and idle the share of hours below
+5% of the peak.*
+
 ```python
 for name in loadcast.available_classes():
     process = loadcast.get_class(name)
@@ -88,7 +94,16 @@ refrigeration at the same industrial site, so no heat-to-cold lag can be
 estimated from data: sweep it, and report how your conclusion moves. While
 sweeping it, hold `carrier_correlation` fixed. The correlation is defined at
 the offset where the carriers match best, so the sweep then changes their
-timing only. [Sweeps and uncertainty](uncertainty.md) shows such a sweep.
+timing only:
+
+![Correlation between heat and cold at each offset, for lags of 0 to 24 hours](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/08_lag.png)
+
+*Correlation between heat and cold at each offset, for cold lags τ of 0 to 24
+hours. The peak moves to τ, while the value at zero offset falls towards the
+calendar floor.*
+
+[Sweeps and uncertainty](uncertainty.md) shows what such a sweep does to a
+design's outputs.
 
 ## Waste heat
 
@@ -105,6 +120,8 @@ Here the site rejects 0.8 MWh of waste heat per MWh of heat it uses.
 `loadcast.reference.waste_to_heat(sector)` gives indicative values for four
 sectors.
 
+![Heat demand and the waste heat rejected, the waste trailing by two hours](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/11_waste.png)
+
 ## Sub-hourly steps
 
 Pass any pandas frequency as `freq`:
@@ -118,6 +135,8 @@ The annual energy, the load factor and the persistence measured in hours stay
 the same at every step length. The process classes were calibrated on hourly
 meters, though, so a 15-minute profile spreads hourly behaviour over a finer
 grid; it adds no measured sub-hourly detail.
+
+![Two days of heat demand at hourly, 30-minute and 15-minute steps](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/10_resolution.png)
 
 The diagnostics below read the step length from the frame's index, so their
 offsets, windows and energies are in hours at any step length:
@@ -187,6 +206,12 @@ thing to compare against.
 ```python
 curve = loadcast.duration_curve(profiles["heat_kw"])
 ```
+
+![Load duration curves of the four process classes](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/06_duration_curves.png)
+
+*Load duration curves of the four process classes, as a share of the peak. The
+flat top is the cap that holds the load factor; the drop to near zero is the
+on/off state of the campaign and batch classes.*
 
 ### The cross-correlogram
 

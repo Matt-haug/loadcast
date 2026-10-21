@@ -34,6 +34,11 @@ Notable changes to `loadcast`. This project follows
 - `examples/02_uncertainty.py`: 32 years of demand for a semi-continuous food
   plant, sampled over its heat-to-cold ratio, electricity share, coupling and
   lag between carriers.
+- Figures on that page: each input swept on its own against each output, the
+  sampled years and the spread of their outputs, and the drift against each
+  input with its Sobol indices for several seeds.
+  `examples/build_doc_figures.py` draws them into `docs/assets/figures/`. The
+  usage page shows the tutorial's figures where they illustrate a section.
 
 ### Fixed
 - PyPI listed the co-authors as the authors and the first author only as
