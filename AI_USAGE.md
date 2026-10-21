@@ -12,9 +12,11 @@
 | Tool | Version / model | Where |
 |---|---|---|
 | Claude Code (Anthropic) | Claude Opus 5 | package code, tests, documentation, paper draft |
+| Claude Code (Anthropic) | Claude Opus 5.5 | documentation |
 
 Period of use: September 2026, during the extraction of this package from the
-author's research codebase.
+author's research codebase; October 2026, to rewrite the documentation and add
+the page on sweeps and uncertainty.
 
 ## Nature and scope of assistance
 
@@ -39,8 +41,9 @@ code before this package, and the scientific contribution is not AI-generated.
   refitting degenerates was proposed and run as part of this assistance.
 - *Documentation.* Drafting `README.md`, `docs/mathematics.md`, `docs/usage.md`
   and the docstrings.
-- *Paper drafting.* Drafting `paper/paper.md`, including the comparison with
-  related software.
+- *Paper drafting.* Drafting the software paper, including the comparison with
+  related software. The draft is kept outside this repository until it is
+  submitted.
 - *Literature and software survey.* Locating and summarising the neighbouring
   tools discussed in the paper. **The author must independently verify every
   citation and every characterisation of another project before submission.**
@@ -60,7 +63,7 @@ code before this package, and the scientific contribution is not AI-generated.
 - The author has reviewed, edited and validated the generated code,
   documentation and paper text.
 - The author has independently verified the claims made about other software
-  and datasets, and every citation in `paper/paper.bib`.
+  and datasets, and every citation in the paper's bibliography.
 - The author has verified the numerical results reported in the documentation,
   including the correlation floor, the resolution invariance of persistence, and
   the recursive-refit degeneration.

@@ -5,6 +5,17 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+### Changed
+- The README, the documentation's home page, the package docstring and the
+  citation abstract present the package as a parametric demand generator: a
+  common demand that any study can regenerate from its inputs, for comparing
+  technologies, parametric and sensitivity analyses, and uncertainty
+  propagation. The coupling between carriers remains the input that sets it
+  apart.
+- The README states which statistics are exact (annual energy, composition,
+  load factor) and which only land near their targets (spread, persistence),
+  and gives the row count of a sub-hourly year and the `waste_kw` column.
+
 ### Fixed
 - PyPI listed the co-authors as the authors and the first author only as
   an email; all three are now authors, with a maintainer contact.

@@ -12,14 +12,24 @@
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.22961300-blue)](https://doi.org/10.5281/zenodo.22961300)
 
 
-**A synthetic multi-carrier industrial energy demand generator**
+**A parametric generator of hourly industrial energy demand, for comparing
+technologies on a common demand, parametric and sensitivity analyses, and
+uncertainty propagation.**
+
+`loadcast` generates a year of heat, cold and electricity demand for an
+industrial site from a few numbers an engineer can get from a site visit or an
+energy bill. The annual energy and the load factor (mean demand over peak
+demand) of each carrier match the request exactly; its spread and persistence
+(how long a high or low spell lasts) land near their targets. The relationship
+between carriers is an input too: how tightly they move together, and how many
+hours apart they are offset. A year takes about a second.
 
 ```python
 import loadcast
 
 profiles = loadcast.generate(
     annual_mwh=10_000,
-    heat_to_cold=7.4,        # this site wants 7.4x more heat than cold
+    heat_to_cold=7.4,        # this site wants 7.4 times more heat than cold
     elec_share=0.20,         # a fifth of its energy is electricity
     process_class="semi_continuous",   # weekday shifts, weekend trough
     carrier_correlation=0.75,          # how tightly the carriers move together
@@ -27,54 +37,85 @@ profiles = loadcast.generate(
 )
 ```
 
-Returns an 8760-row hourly or quarter-hourly frame of `heat_kw`, `cold_kw` and `elec_kw`.
+`profiles` is a `DataFrame` with one row per time step (8760 for an hourly
+year, 35 040 for a quarter-hourly one) and the columns `heat_kw`, `cold_kw`,
+`elec_kw` and `waste_kw`, the last zero unless you ask for waste heat.
 
 ![Heat-cold cross-correlogram: the published disaggregated construction peaks at exactly 1.000; loadcast peaks at the 0.60 asked for](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/07_coincidence.png)
 
-*Left: every carrier as a fixed multiple of one shared profile, the construction behind published
-disaggregated data, which is correlated at 1 by algebra. Right: `loadcast` with `carrier_correlation=0.60`.
-More in the [tutorial notebook](https://github.com/Matt-haug/loadcast/blob/main/examples/01_tutorial.ipynb).*
+*Correlation between heat and cold demand at each offset in hours. Left: every
+carrier as a fixed multiple of one shared profile, the construction behind
+published disaggregated data, which correlates them at 1 by algebra. Right:
+`loadcast` with `carrier_correlation=0.60`. More in the
+[tutorial notebook](https://github.com/Matt-haug/loadcast/blob/main/examples/01_tutorial.ipynb).*
 
-## Why
+## What it is for
 
-Designing anything with storage against an industrial site needs to know not
-just *how much* of each carrier the site wants, but **whether it wants them at
-the same hours**. A store exists to bridge the gap when it does not.
+Use it when a design study needs the hourly demand of an industrial site and
+has no metered series. You are sizing something that serves the site's heat,
+cold or electricity: a heat pump, a thermal store, a trigeneration unit.
+Metered industrial series are rarely published, so each study builds its demand
+from whatever it can obtain: one metered plant, a sector average, a standard
+load profile. Studies of different technologies then rarely rest on the same
+demand, and their results are hard to compare.
 
-Existing sources cannot answer that question:
+Because a handful of numbers defines the demand, `loadcast` does three things a
+borrowed series cannot:
 
-| source | approach | industrial | coincidence controllable? |
+- **Give studies a common demand.** A study that reports its inputs and random
+  seed lets anyone regenerate its demand. A heat pump, a thermal store and a
+  trigeneration unit can then be assessed against the same site, or against the
+  same range of sites.
+- **Sweep what no dataset measures.** Whether a site wants its carriers at the
+  same hours decides how much storage it needs, and no public dataset resolves
+  it. Here it is two inputs, `carrier_correlation` and `carrier_lag_h`, to vary
+  like any other.
+- **Propagate uncertainty.** Every input is a single number, so the generator
+  suits parametric analyses, sensitivity analysis and uncertainty propagation.
+
+It is **not a model of your site.** The inputs are yours to choose, and the
+defaults are indicative values with a stated source, not predictions. Report a
+conclusion as it holds across a range of inputs, not at one assumed point.
+
+## Why the coupling between carriers is an input
+
+A store exists to bridge the hours when a site wants one carrier and not
+another. Sizing it therefore needs more than how much of each carrier the site
+uses: it needs to know whether the site wants them at the same hours. No
+existing source lets a user set that:
+
+| source | approach | industrial | coupling between carriers settable? |
 |---|---|---|---|
-| demandlib / BDEW SLP | deterministic step profiles | yes | no — deterministic |
-| RAMP | bottom-up from appliances | no | no — emerges from user schedules |
+| demandlib / BDEW SLP | deterministic step profiles | yes | no: every carrier follows the same calendar |
+| RAMP | bottom-up from appliances | no | no: it follows from user schedules |
 | LoadProfileGenerator | behavioural simulation | no | no |
-| EnTiSe | framework, pluggable methods | partly | no — pipeline dependency |
-| JERICHO-E-usage | disaggregated national totals | yes | no — fixed at 1.000 |
+| EnTiSe | framework, pluggable methods | partly | no: a dependency between pipeline steps |
+| JERICHO-E-usage | disaggregated national totals | yes | no: fixed at exactly 1 |
 
-The disaggregated datasets build every carrier as a fixed scalar times one
-shared profile, $P_m(t) = \kappa_m p(t)$, under which the correlation between
-any two carriers is identically 1 — an artefact of the construction, not a
-measurement. Feeding that into a storage study builds the answer into the
-question.
-
-`loadcast` makes the relationship an input you set and sweep.
+Published disaggregated datasets build each carrier as a fixed multiple of one
+shared profile, $P_m(t) = \kappa_m\,p(t)$, where $P_m(t)$ is the demand for
+carrier $m$ at hour $t$, $p(t)$ the shared profile and $\kappa_m$ a constant.
+Under that construction the correlation between any two carriers is exactly 1:
+an artefact of the method, not a measurement. A storage study fed with such
+data has its answer built into its input.
 
 ## What you specify
 
-Things you can answer from a site visit or an energy bill, not things the
-mathematics wants:
+Inputs you can answer from a site visit or an energy bill:
 
 | input | meaning |
 |---|---|
 | `annual_mwh` | total annual energy across all carriers |
 | `heat_to_cold` | ratio of annual heat to annual cold |
 | `elec_share` | electricity as a fraction of the total |
-| `process_class` | continuous, semi-continuous, campaign or batch |
-| `carrier_correlation` | how tightly carriers move together, at peak alignment |
+| `process_class` | how the process runs: continuously, in shifts, in campaigns or in batches |
+| `carrier_correlation` | how tightly the carriers move together, once lined up at their best match |
 | `carrier_lag_h` | hours by which a carrier trails the others |
+| `seed` | random seed: the same inputs and seed give the same profiles |
 
-The four process classes are calibrated on metered industrial sites. If none
-fits yours, build one from your own statistics:
+A process class is a rhythm calibrated on metered industrial sites: a calendar
+of how demand varies by month, weekday and hour, plus a load factor, a spread
+and a persistence. If none fits your site, build one from your own statistics:
 
 ```python
 from loadcast import class_from_observations, register_class
@@ -87,49 +128,60 @@ register_class(mine)
 profiles = loadcast.generate(process_class="my_plant", annual_mwh=5_000)
 ```
 
-The inversion from observables to generator parameters is closed form. See [mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/) for details.
+Here `cv` is the coefficient of variation of the hourly demand (standard
+deviation over mean) and `lag1` its correlation with itself one hour later.
+The calendar comes from the nearest shipped class, because measuring one takes
+a full year of metering. Closed-form formulas turn the three statistics into
+the generator's parameters, with no fitting; the
+[mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/) page
+derives them.
 
 ## What it guarantees exactly
 
-Not approximately, but to floating-point:
+To floating-point precision:
 
-- annual energy equals `annual_mwh`
-- the heat:cold ratio equals `heat_to_cold`
-- the electricity share equals `elec_share`
-- the load factor equals the process class's, via the capacity cap fixed point
-- every value is strictly positive
+- the annual energy equals `annual_mwh`;
+- the heat-to-cold ratio equals `heat_to_cold`, and the electricity share
+  `elec_share`;
+- the load factor equals the process class's, because a cap on the peak holds
+  it;
+- every value is strictly positive.
+
+Spread and persistence are aimed at, not imposed. The on/off states and the
+cap act after them, so they land near their targets, with a bias the
+[mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/) page
+reports for each class.
 
 ## Diagnostics
 
 ```python
-loadcast.summary_table(profiles)                       # the four scalars
+loadcast.summary_table(profiles)                       # the four statistics
 loadcast.duration_curve(profiles["heat_kw"])           # load duration curve
 loadcast.cross_correlogram(profiles["heat_kw"], profiles["cold_kw"])
 loadcast.integrated_drift(profiles["heat_kw"], profiles["cold_kw"], window_h=24)
 ```
 
-Read the correlogram's **peak position**, not only its height. A lag and a weak
-coupling are indistinguishable from the contemporaneous correlation alone: as
-carriers are offset, the lag-0 correlation decays towards the floor the shared
-calendar imposes, exactly where a small correlation would also put it.
+The cross-correlogram gives the correlation between two carriers at each
+offset in hours. Read where it peaks, not only how high. Offsetting two
+carriers lowers their correlation at zero offset towards a floor set by their
+shared calendar, which is where a weak coupling would put it too: at zero
+offset, a lag and a weak coupling look the same.
 
-`integrated_drift` is the quantity a store actually responds to. A buffer does
-not sample a mismatch, it integrates one, so what sizes it is the area under the
-mismatch autocovariance over the storage window — correlation is a single point
-of that picture.
+The integrated drift is what a store responds to. A store does not see the
+mismatch between two carriers hour by hour; it accumulates it. What sizes it is
+therefore the mismatch summed over the storage window, and the correlation is
+only one point of that picture.
 
 ## What it deliberately does not do
 
-- **No temperature.** It carries energy by carrier. Whether a machine can
-  *reach* a given process is a separate question, answered from the machine's
+- **No temperature.** It carries energy by carrier. Whether a machine can reach
+  a process's temperature is a separate question, answered from the machine's
   own limits.
-- **No claim about your site.** Parameters are yours to choose; defaults are
-  indicative values with a stated provenance, not predictions. Results are meant
-  to be reported as they hold across a swept space, not at one assumed point.
-- **No cold validation.** No site in the calibration archive meters
-  refrigeration. The cold carrier's annual quantity is whatever you specify;
-  its *shape* rests on the same calendar and correlation assumptions as the
-  others, and nothing independent confirms it. Every cold result carries this.
+- **No validated cold shape.** No site in the calibration archive meters
+  refrigeration. The cold carrier's annual quantity is whatever you specify,
+  but its hourly shape rests on the same calendar and coupling as the other
+  carriers, and nothing independent confirms it. Every cold result carries
+  this caveat.
 
 ## Install
 
@@ -141,34 +193,45 @@ Requires Python 3.9+, numpy and pandas. Nothing else.
 
 ## Documentation
 
-A detailed documentation of the library is available at: https://loadcast.readthedocs.io/en/latest/
+The [documentation](https://loadcast.readthedocs.io/en/latest/) has four parts:
 
-Refer to that documentation for usage instructions and examples and details of the method.
+- [Usage](https://loadcast.readthedocs.io/en/latest/usage/): from the one-liner
+  to a class built from your own measurements, and how to check what you got.
+- [Examples](https://loadcast.readthedocs.io/en/latest/examples/): the figures
+  of the tutorial notebook, each with what it shows.
+- [Mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/): every
+  formula derived, with worked numbers and every symbol defined.
+- [API reference](https://loadcast.readthedocs.io/en/latest/api/): every public
+  function and class.
 
 ## Calibration data
 
 The process classes are calibrated on metered industrial sites that cannot be
-redistributed. What ships is the *derived* statistics and calendar factors —
-group means carrying no identifying information. The raw series are not part of
+redistributed. What ships is derived statistics and calendar factors: group
+means that carry no identifying information. The raw series are not part of
 this repository.
-
-## Contributing
-
-Issues and pull requests are welcome — see [CONTRIBUTING.md](https://github.com/Matt-haug/loadcast/blob/main/CONTRIBUTING.md)
-for scope, what a test looks like here, and support expectations. Reports that
-the generated profiles disagree with a real site you have measured are
-especially welcome: the calibration archive is small, and that is the package's
-main limitation.
-
-This project follows the [Contributor Covenant](https://github.com/Matt-haug/loadcast/blob/main/CODE_OF_CONDUCT.md).
-Generative AI was used in building it; see [AI_USAGE.md](https://github.com/Matt-haug/loadcast/blob/main/AI_USAGE.md).
 
 ## Citing
 
-Use the "Cite this repository" button, or `CITATION.cff`. Each release is
-archived on Zenodo with a DOI.
+Use the "Cite this repository" button or
+[`CITATION.cff`](https://github.com/Matt-haug/loadcast/blob/main/CITATION.cff).
+Every release is archived on Zenodo:
+[10.5281/zenodo.22961300](https://doi.org/10.5281/zenodo.22961300).
+
+## Contributing
+
+Issues and pull requests are welcome; see
+[CONTRIBUTING.md](https://github.com/Matt-haug/loadcast/blob/main/CONTRIBUTING.md)
+for the scope, what a test looks like here, and what support to expect. Reports
+of generated profiles that disagree with a site you have measured are
+especially useful: the calibration archive is small, and that is the package's
+main limitation. This project follows the
+[Contributor Covenant](https://github.com/Matt-haug/loadcast/blob/main/CODE_OF_CONDUCT.md).
+Generative AI was used in building it; see
+[AI_USAGE.md](https://github.com/Matt-haug/loadcast/blob/main/AI_USAGE.md).
 
 ## Licence
 
-MIT — see [LICENSE](https://github.com/Matt-haug/loadcast/blob/main/LICENSE). Changes are recorded in
+MIT; see [LICENSE](https://github.com/Matt-haug/loadcast/blob/main/LICENSE).
+Changes are recorded in
 [CHANGELOG.md](https://github.com/Matt-haug/loadcast/blob/main/CHANGELOG.md).

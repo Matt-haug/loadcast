@@ -2,9 +2,15 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "loadcast: a synthetic multi-carrier industrial energy demand time series generator"
 abstract: >-
-  Generates hourly heat, cold and electricity demand for an industrial site
-  from a handful of observable inputs, with the correlation and the lag between
-  carriers as explicit parameters rather than artefacts of the construction.
+  Generates a year of hourly heat, cold and electricity demand for an
+  industrial site from a few numbers an engineer can get from a site visit or
+  an energy bill, as an input to design studies of heat pumps, thermal stores
+  and trigeneration units. Because these numbers define the demand, a study
+  that reports them lets anyone regenerate it, so different technologies can be
+  assessed against the same demand; and because every input is a single number,
+  the generator suits parametric analyses, sensitivity analysis and uncertainty
+  propagation. The correlation and the lag between carriers are explicit
+  inputs rather than artefacts of the construction.
 type: software
 authors:
   - given-names: Mattéo

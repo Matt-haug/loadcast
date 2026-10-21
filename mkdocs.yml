@@ -1,5 +1,5 @@
 site_name: loadcast
-site_description: Synthetic multi-carrier industrial energy demand profiles
+site_description: A parametric generator of hourly industrial heat, cold and electricity demand
 repo_url: https://github.com/Matt-haug/loadcast
 theme:
   name: material

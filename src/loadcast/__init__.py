@@ -1,10 +1,11 @@
-"""loadcast -- synthetic multi-carrier industrial energy demand.
+"""loadcast -- a parametric generator of hourly industrial energy demand.
 
-Hourly heat, cold and electricity demand for an industrial site, from the
-handful of numbers someone actually knows about a plant: how much energy it uses
-in a year, roughly how much more heat than cold it wants, how much of the
-total is electricity, and whether the process runs continuously, in shifts or in
-batches.
+A year of hourly heat, cold and electricity demand for an industrial site, from
+the few numbers an engineer can get from a site visit or an energy bill: the
+annual energy, the ratio of heat to cold, the electricity share, and whether
+the process runs continuously, in shifts, in campaigns or in batches. It is
+built to be an *input* to design studies (heat pumps, thermal stores,
+trigeneration units), not to describe any real site.
 
     import loadcast
 
@@ -13,27 +14,33 @@ batches.
         heat_to_cold=7.4,
         elec_share=0.20,
         process_class="semi_continuous",
+        carrier_correlation=0.75,          # how tightly the carriers move together
+        carrier_lag_h={"cold": 6},         # cold trails heat by six hours
     )
 
-What makes it different
------------------------
-Existing tools either produce deterministic profiles or leave the relationship
-between carriers to fall out of whatever drives them. Both give carriers that
-move in lockstep, which is an artefact of the construction rather than a
-property of industry -- and for anything with storage, *whether the carriers
-peak together* is precisely what decides how much buffering is needed.
+What it is for
+--------------
+Because a handful of numbers defines the demand, a study that reports them lets
+anyone regenerate it, so different technologies can be assessed against the
+same demand. Each year takes about a second, and every input is a single
+number, so the generator suits parametric analyses, sensitivity analysis and
+uncertainty propagation.
 
-loadcast makes that relationship an explicit input. `carrier_correlation` sets
-how tightly the carriers move together and `carrier_lag_h` sets how far apart
-they are offset, so a study can sweep coincidence rather than inherit it.
+One input sets it apart: the relationship between carriers. Published
+multi-carrier data builds every carrier from one shared profile, so the
+carriers move in lockstep -- an artefact of the construction, not a property of
+industry. For anything with storage, whether the carriers peak together decides
+how much storage is needed. Here `carrier_correlation` sets how tightly they
+move together and `carrier_lag_h` how many hours apart they are offset, so a
+study can sweep that relationship rather than inherit it.
 
-What it does not do
--------------------
-It carries energy by carrier, not temperature: whether a machine can *reach* a
-given process is a separate question, answered from the machine's own limits.
-And the parameters are yours to choose. Defaults are indicative values with a
-stated provenance, not predictions about any real site -- results are meant to
-be reported as they hold across a swept space, not at a single assumed point.
+What it is not
+--------------
+Not a model of temperature: it carries energy by carrier, and whether a machine
+can reach a process's temperature is answered from the machine's own limits.
+Not a model of your site: the inputs are yours to choose, and the defaults are
+indicative values with a stated source, not predictions. Report a result as it
+holds across a range of inputs, not at one assumed point.
 """
 
 from __future__ import annotations

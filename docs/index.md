@@ -3,8 +3,31 @@
 ![loadcast](assets/loadcast-lockup-dark.svg#only-dark){ width="440" }
 </p>
 
-Synthetic multi-carrier industrial energy demand, with the coincidence between
-carriers as an explicit input.
+**A parametric generator of hourly industrial energy demand, for comparing
+technologies on a common demand, parametric and sensitivity analyses, and
+uncertainty propagation.**
+
+`loadcast` turns a few numbers an engineer can get from a site visit or an
+energy bill into a year of hourly heat, cold and electricity demand. Those
+numbers are the annual energy, the ratio of heat to cold, the electricity
+share, and whether the process runs continuously, in shifts, in campaigns or in
+batches. A year takes about a second, which makes the generator an *input* for
+design studies of anything that serves an industrial site, such as a heat pump,
+a thermal store or a trigeneration unit. Because a handful of numbers defines
+the demand, a study that reports them lets anyone regenerate it. Different
+technologies can then be assessed against the same demand, or against the same
+range of demands, which is what a sweep or an uncertainty propagation needs.
+
+One input sets it apart: the relationship between carriers. Published
+multi-carrier industrial data builds each carrier as a fixed multiple of one
+shared profile, so the carriers are correlated at exactly 1 by algebra rather
+than by measurement. That matters for anything with storage, because a store
+exists to bridge the hours when a site wants one carrier and not another. In
+`loadcast`, `carrier_correlation` sets how tightly the carriers move together
+and `carrier_lag_h` how many hours apart they are offset. No public archive
+meters process heat and refrigeration at one site, so neither can be fitted:
+they are inputs to sweep, and a result should be reported as it holds across
+the swept range.
 
 ```python
 import loadcast
@@ -23,32 +46,15 @@ profiles = loadcast.generate(
 pip install loadcast
 ```
 
-## Where to go
+The annual energy, the heat-to-cold ratio, the electricity share and the load
+factor come out exact; spread and persistence land near their targets. The
+generator does not model temperature, and it makes no claim about any real
+site: the inputs are yours to choose.
 
-- **[Usage](usage.md)** — recipes, from the one-liner to fitting your own site.
-- **[Examples](examples.md)** — the figure gallery from the tutorial notebook.
-- **[Mathematics](mathematics.md)** — every formula derived, with worked
-  numbers and a nomenclature table. Each derivation has a matching test.
-
-## The idea in one paragraph
-
-Designing anything with storage against an industrial site needs to know not
-only how much of each carrier the site wants, but whether it wants them at the
-same hours — a store exists to bridge the gap when it does not. Published
-multi-carrier industrial data cannot answer that, because it builds each carrier
-as a fixed multiple of one shared profile, under which the carriers are
-correlated at exactly 1 by algebra rather than by measurement. `loadcast` makes
-that relationship a parameter you set and sweep.
-
-## What is exact
-
-- annual energy, the heat:cold ratio and the electricity share
-- the load factor, via a capacity-cap fixed point
-- positivity of every value
-
-## What is exogenous
-
-The correlation and the lag between carriers. No public archive meters process
-heat and refrigeration at one industrial site, so neither can be fitted for that
-pair. They are inputs, and results should be reported as they hold across a
-swept range rather than at one assumed setting.
+- [Usage](usage.md): from the one-liner to a class built from your own
+  measurements, and how to check what you got.
+- [Examples](examples.md): the figures of the tutorial notebook, each with what
+  it shows.
+- [Mathematics](mathematics.md): every formula derived, with worked numbers and
+  every symbol defined. Each derivation has a matching test.
+- [API reference](api.md): every public function and class.
