@@ -1,13 +1,12 @@
 """Indicative starting values, from peer-reviewed sources, with their caveats.
 
-Nothing here predicts your site. These are published aggregates, and the whole
-point of this module is that they are reported *with what is wrong with them*
-rather than as defaults that quietly become assumptions.
+Nothing here predicts your site. These are published aggregates, reported *with
+what is wrong with them* so that they do not become assumptions unnoticed.
 
 Three sources, each used only for what it resolves:
 
 ============  ==========================================  ====================
-source        used for                                    conspicuously lacks
+source        used for                                    lacks
 ============  ==========================================  ====================
 JERICHO       the only three-carrier split that exists    sector detail
 Rehfeldt      heat:cold by subsector, as a range          electricity

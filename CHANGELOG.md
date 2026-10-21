@@ -5,6 +5,8 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-21
+
 ### Changed
 - The README, the documentation's home page, the package docstring and the
   citation abstract present the package as a parametric demand generator: a
@@ -15,6 +17,14 @@ Notable changes to `loadcast`. This project follows
 - The README states which statistics are exact (annual energy, composition,
   load factor) and which only land near their targets (spread, persistence),
   and gives the row count of a sub-hourly year and the `waste_kw` column.
+- The usage, examples and mathematics pages and the public docstrings are
+  rewritten for plain reading: each paragraph leads with its point, every term
+  is defined where it first appears, and the internal "knob" is called what it
+  is, the correlation between the carriers' latent series. The usage page gains
+  sections on waste heat, sub-hourly steps and sites with only some carriers.
+- The bias table on the mathematics page is refreshed from `bias_report()` and
+  now shows the spread as well: the batch class comes out at 1.41 against a
+  target of 1.18.
 
 ### Added
 - A documentation page on sweeps and uncertainty propagation: one input at a
@@ -28,6 +38,15 @@ Notable changes to `loadcast`. This project follows
 ### Fixed
 - PyPI listed the co-authors as the authors and the first author only as
   an email; all three are now authors, with a maintainer contact.
+- Documentation errors: the energy balance on the mathematics page lacked the
+  factor 1000 between kWh and MWh; its symbols `T`, `k`, `h` and `m` each named
+  two things; `bias_report` said persistence comes out above target, which
+  holds only for classes without an on/off state; `DemandSpec` pointed to
+  `solve_correlation_knob` in the wrong module and did not document
+  `waste_to_heat`; the examples page gave waste heat a correlation of its own,
+  which it does not have.
+- The diagnostics now say that their offsets and windows count time steps, not
+  hours, which matters for sub-hourly profiles.
 
 ## [0.1.3] - 2026-10-09
 

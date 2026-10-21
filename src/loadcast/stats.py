@@ -1,14 +1,18 @@
 """Diagnostics: what a generated profile actually turned out to be.
 
-Four views, and between them they cover what anyone sizing equipment needs:
+Four views, which between them cover what sizing equipment needs:
 
-    profile_statistics   the four scalars the generator was asked for
-    duration_curve       the load duration curve, sorted descending
-    cross_correlogram    how the carriers line up, lag by lag
+    profile_statistics   the four statistics the generator was asked for
+    duration_curve       the load duration curve, sorted from the highest hour
+    cross_correlogram    how the carriers line up, offset by offset
     integrated_drift     how far apart they drift over a storage window
 
-The last two are the ones other generators cannot show you, because they have no
-controllable cross-carrier structure to display.
+The last two describe how the carriers relate, which the generator lets you
+set.
+
+The offsets of `cross_correlogram` and the window of `integrated_drift` count
+time steps, which are hours for an hourly series. For a sub-hourly series,
+convert: a day is 96 steps of 15 minutes.
 """
 
 from __future__ import annotations
@@ -50,11 +54,11 @@ def profile_statistics(series: pd.Series | np.ndarray) -> dict[str, float]:
 
 def duration_curve(series: pd.Series | np.ndarray,
                    normalise: bool = True) -> np.ndarray:
-    """Load duration curve: demand sorted from highest hour to lowest.
+    """Load duration curve: demand sorted from the highest hour to the lowest.
 
-    Often the only thing an industrial site can actually supply about itself,
-    and it encodes load factor, peak and idle fraction at once -- which is why
-    it is the right thing to tune against.
+    It is often the only thing an industrial site can supply about itself, and
+    it shows the load factor, the peak and the idle fraction at once, which
+    makes it the right thing to compare against.
     """
     values = np.sort(np.asarray(series, dtype=float))[::-1]
     if normalise and values.size and values.max() > 0:
@@ -65,14 +69,14 @@ def duration_curve(series: pd.Series | np.ndarray,
 def cross_correlogram(first: pd.Series | np.ndarray,
                       second: pd.Series | np.ndarray,
                       max_lag: int = 48) -> pd.DataFrame:
-    """Correlation between two carriers as a function of lag, in hours.
+    """Correlation between two carriers at each offset, in time steps.
 
-    ``corr(first(t), second(t + lag))``, so a positive peak lag means `second`
-    trails `first`.
+    ``corr(first(t), second(t + lag))``, so a peak at a positive lag means
+    `second` trails `first`.
 
-    Read the *position* of the peak, not only its height. A lag and a weak
-    coupling look identical at lag zero: as carriers are offset, the
-    contemporaneous correlation decays towards the floor the shared calendar
+    Read the *position* of the peak, not only its height. At zero offset, a lag
+    and a weak coupling look the same: as carriers are offset, their
+    correlation at zero offset falls towards the floor the shared calendar
     imposes, which is exactly where a small correlation would also put it. Only
     the correlogram separates the two.
     """
@@ -100,16 +104,20 @@ def integrated_drift(first: pd.Series | np.ndarray,
                      window_h: int = 24) -> float:
     """Mean absolute drift between two carriers over a storage window.
 
-    Each carrier is normalised to its own mean, so this measures *timing*
-    mismatch and not a difference in size:
+    Each carrier is divided by its own mean, so this measures a mismatch in
+    *timing*, not in size:
 
         D(t) = sum over the window of [ a(s)/mean(a) - b(s)/mean(b) ]
 
-    A store does not sample a mismatch, it integrates one, so the quantity that
-    sizes a buffer is the running integral rather than the instantaneous gap.
-    Correlation is a single point of that picture -- the value at lag zero --
-    and is blind to how long an excursion lasts. Two carrier pairs with
-    identical correlation can differ severalfold here.
+    and the result is the mean of ``|D(t)|``, in hours of mean demand. A store
+    does not see a mismatch hour by hour, it accumulates it, so what sizes a
+    store is the mismatch summed over its window rather than the gap in one
+    hour. The correlation is a single point of that picture, the value at zero
+    offset, and is blind to how long an excursion lasts. Two carrier pairs with
+    the same correlation can differ severalfold here.
+
+    `window_h` counts time steps: hours for an hourly series, 96 for a day of
+    15-minute steps.
     """
     a = pd.Series(np.asarray(first, dtype=float))
     b = pd.Series(np.asarray(second, dtype=float))

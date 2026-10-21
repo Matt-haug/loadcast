@@ -90,10 +90,11 @@ class DemandSpec:
     process_class
         Name of a calibrated rhythm; see `loadcast.available_classes()`.
     carrier_correlation
-        Correlation wanted between the *finished* carrier profiles at their
-        peak alignment. This is an observable, not the generator's internal
-        knob -- the knob that delivers it is solved for. See
-        `loadcast.fitting.solve_correlation_knob`.
+        Correlation wanted between the *finished* carrier profiles, at the
+        offset where they match best. It is what you observe in the output; the
+        generator solves for the internal correlation that delivers it (see
+        `loadcast.solve_correlation_knob`). It cannot go below the process
+        class's floor, `loadcast.correlation_floor`.
     carrier_lag_h
         Hours by which each carrier's process fluctuation trails the others,
         as ``{"cold": 6}`` for cold demand following heat by six hours.
@@ -101,10 +102,13 @@ class DemandSpec:
         a factory's opening hours are common to all its carriers, so only the
         process fluctuation is offset.
 
-        This is an exogenous design parameter, not a fitted one. No public
-        archive meters heat and refrigeration at one industrial site, so no
-        heat-to-cold lag can be estimated from data; sweeping it is the
-        honest treatment.
+        It is an input to choose, not a fitted value. No public archive meters
+        heat and refrigeration at one industrial site, so no heat-to-cold lag
+        can be estimated from data: sweep it.
+    waste_to_heat
+        Waste heat the site rejects, per unit of heat it consumes. ``None`` (the
+        default) for no waste heat. Waste heat takes no share of `annual_mwh`,
+        because the site does not buy it; see `waste_mwh`.
     seed
         Random seed. The same seed and spec always give the same profiles.
     label
@@ -112,12 +116,12 @@ class DemandSpec:
 
     Notes
     -----
-    A lag and a weak correlation are indistinguishable from the contemporaneous
-    correlation alone: as the lag grows, the measured lag-0 correlation decays
-    towards the floor the shared calendar imposes, exactly where a small
-    `carrier_correlation` would also put it. When sweeping the lag, hold
-    `carrier_correlation` fixed -- it is defined at peak alignment, so the sweep
-    then changes timing only and not coupling strength.
+    At zero offset, a lag and a weak correlation look the same: as the lag
+    grows, the correlation measured at zero offset falls towards the floor the
+    shared calendar imposes, exactly where a small `carrier_correlation` would
+    also put it. When sweeping the lag, hold `carrier_correlation` fixed -- it
+    is defined at the offset of best match, so the sweep then changes timing
+    only and not how tightly the carriers move together.
     """
 
     annual_mwh: float = 10_000.0

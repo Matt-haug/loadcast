@@ -134,7 +134,10 @@ def split_cv(total_cv: float, calendar_cv: float) -> float:
 def correlation_transfer(latent_corr: float, calendar_cv: float,
                          residual_cv: float, sigma: float | None = None
                          ) -> float:
-    """Correlation of the finished profiles, from the generator's knob.
+    """Correlation of the finished profiles, from the internal correlation.
+
+    `latent_corr` is the correlation between the carriers' latent series, which
+    the generator sets.
 
     With ``P_m = L_m * S * R_m`` sharing one calendar ``S``, writing
     ``q = rho_R * CV_R^2``:
@@ -143,10 +146,10 @@ def correlation_transfer(latent_corr: float, calendar_cv: float,
         corr(P_h, P_c) = -----------------------
                                 CV_total^2
 
-    Verified against simulation to three decimals across the range of the knob.
-    It is exact for the unmasked model; an on/off mask and the capacity cap both
-    shift it, which is why the production path solves for the knob numerically
-    and uses this for explanation, diagnosis and a starting guess.
+    It matches simulation to three decimals across the range of `latent_corr`.
+    It is exact without the on/off state and the capacity cap; both shift it,
+    so the generator solves for the internal correlation numerically and uses
+    this formula to explain and diagnose.
     """
     if sigma is None:
         sigma = sigma_from_cv(residual_cv)
@@ -164,13 +167,13 @@ def correlation_floor(process_class: str | ProcessClass,
 
         g(0) = CV_calendar^2 / CV_total^2
 
-    Read it as a statement about industry rather than as plumbing: the floor is
-    the share of a profile's total variance that the shared calendar
-    contributes, so a high floor means the carriers move together mainly
-    because the factory is open or shut, not because the processes are linked.
+    The floor is the share of a profile's total variance that the shared
+    calendar contributes. It is a statement about industry: a high floor means
+    the carriers move together mainly because the factory is open or shut, not
+    because the processes are linked.
 
-    Asking the generator for a correlation below this floor cannot be satisfied
-    by any non-negative knob.
+    No non-negative internal correlation delivers a correlation below this
+    floor.
     """
     import pandas as pd
 
@@ -196,14 +199,16 @@ def bias_report(process_class: str | None = None, seeds: int = 4,
     """Target statistics against what the generator actually delivers.
 
     Load factor and annual energy are imposed and come out exact. Spread and
-    persistence are *not* imposed -- they emerge from parameters chosen to
-    produce them -- so they land close but not on target, and this reports how
-    close. The offset is systematic rather than random: persistence typically
-    comes out a few hundredths above target, because the capacity cap trims the
-    peaks that would otherwise break up a run.
+    persistence are *not* imposed -- they follow from parameters chosen to
+    produce them -- so they land near their targets rather than on them, and
+    this reports how near, averaged over `seeds` draws. The offset is
+    systematic rather than random, and its sign depends on the class. Without
+    an on/off state, persistence comes out above target, because the capacity
+    cap trims the peaks that would otherwise break up a run; with one, it
+    comes out below, because the on/off state chops runs into pieces.
 
-    Reported rather than tuned away. A third free parameter fitted to close it
-    would be over-fitting, not calibration.
+    The gap is reported rather than tuned away: a further parameter fitted to
+    close it would be over-fitting, not calibration.
     """
     import pandas as pd
 
@@ -243,18 +248,18 @@ def class_from_observations(name: str, load_factor: float, cv: float,
                             description: str = "") -> ProcessClass:
     """A process class fitted to statistics you measured yourself.
 
-    Supply the four numbers a meter gives you and get a class the generator can
-    use. The calendar rhythm is borrowed from one of the shipped classes, since
-    a month/day/hour shape needs a full year of measurement to estimate and is
-    usually the part a user does *not* have; pass `calendar_from` to choose
-    which rhythm is closest to your site's shift pattern.
+    Supply the numbers a meter gives you and get a class the generator can
+    use. The calendar rhythm is borrowed from one of the shipped classes,
+    because a month/day/hour shape needs a full year of measurement to estimate
+    and is usually the part a user does *not* have; pass `calendar_from` to
+    choose the rhythm closest to your site's shift pattern.
 
     .. warning::
 
-       **Feed it measurements, never generated output.** The generator delivers
-       persistence slightly above target (see `bias_report`). That offset is
-       harmless once, but it compounds if you measure a generated profile and
-       feed the result back in. Doing so repeatedly from `semi_continuous`
+       **Feed it measurements, never generated output.** The generator misses
+       its persistence target by a systematic amount (see `bias_report`). That
+       offset does no harm once, but it compounds if you measure a generated
+       profile and feed the result back in. Doing so repeatedly from `semi_continuous`
        drives the lag-1 autocorrelation 0.79 -> 0.86 -> 0.91 -> 0.94 -> ... up to
        a fixed point near 0.97, while the spread bleeds down from 0.48 to 0.42:
        the profile grows smoother and stickier each round until it has lost the
@@ -268,17 +273,28 @@ def class_from_observations(name: str, load_factor: float, cv: float,
 
     Parameters
     ----------
+    name
+        Name to register the class under, and to pass as `process_class`.
     load_factor
         Mean demand over peak demand, in (0, 1).
     cv
-        Coefficient of variation of the hourly series.
+        Coefficient of variation of the hourly series: standard deviation over
+        mean.
     lag1
-        Lag-1 autocorrelation of the hourly series.
+        Lag-1 autocorrelation of the hourly series: its correlation with itself
+        one hour later.
+    calendar_from
+        Shipped class whose calendar (month, weekday and hour factors) to
+        borrow.
     off_fraction
-        Share of hours effectively off. Leave at zero unless the process is
-        genuinely bimodal: a spread alone cannot make a profile *off* rather
-        than merely low, and a mask fitted to a process that does not stop will
-        overstate its idle time.
+        Share of hours the process is off. Leave at zero unless the process
+        runs or stops: spread alone cannot make a profile *off* rather than
+        merely low, and an on/off state fitted to a process that does not stop
+        overstates its idle time.
+    off_level
+        Load while off, as a fraction of the running level.
+    description
+        Free text kept with the class.
     """
     if not 0.0 < load_factor < 1.0:
         raise ValueError(f"load_factor must be in (0, 1), got {load_factor}")

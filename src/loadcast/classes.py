@@ -3,8 +3,8 @@
 A process class bundles everything the generator needs that is *not* specific to
 one site: the calendar rhythm (month, day-of-week, hour-of-day factors) and the
 three statistics that describe how the load fluctuates around it (load factor,
-coefficient of variation, lag-1 persistence), plus an on/off description for
-processes that are genuinely intermittent rather than merely variable.
+coefficient of variation, lag-1 autocorrelation), plus an on/off description
+for processes that stop rather than merely vary.
 
 Each class is calibrated on one metered industrial site. The sites themselves
 are not distributed -- what ships is the derived statistics and the calendar
@@ -56,7 +56,7 @@ class ProcessClass:
         Lag-1 autocorrelation of the finished profile.
     mode
         ``"lognormal"`` for a process that varies continuously, ``"onoff"`` for
-        one that genuinely stops. The choice is forced by the data: a lognormal
+        one that stops. The choice is forced by the data: a lognormal
         with the right spread still puts a batch process's load factor at 0.02
         against 0.22 measured, because a lognormal tail is far longer than an
         on/off process at equal spread.

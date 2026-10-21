@@ -23,10 +23,11 @@ alone sets the energy and nothing downstream can drift it.
 
 The calendar is shared and never shifted. A factory's opening hours are common
 to all its carriers -- heat and refrigeration do not take the weekend off at
-different times -- so only the *process fluctuation* carries a lag. Because a
-circular shift is a permutation, lagging a carrier leaves every one of its own
-statistics (load factor, spread, persistence, annual energy) exactly unchanged.
-The lag is therefore a pure cross-carrier knob.
+different times -- so only the *process fluctuation* carries a lag. The shift
+wraps around the end of the year, so it only reorders the hours: lagging a
+carrier leaves every one of its own statistics (load factor, spread,
+persistence, annual energy) exactly unchanged. The lag therefore changes only
+how the carriers relate to one another.
 """
 
 from __future__ import annotations
@@ -92,12 +93,13 @@ def lognormal_from_latent(z: np.ndarray, sigma: float) -> np.ndarray:
 
 def onoff_from_latent(latent: np.ndarray, off_fraction: float,
                       off_level: float) -> np.ndarray:
-    """Persistent, cross-correlated on/off masks from Gaussian latents.
+    """Persistent, cross-correlated on/off masks from Gaussian latent series.
 
-    Thresholding a persistent latent at its own empirical quantile is a Gaussian
-    copula: the binary state inherits both the persistence and the cross-carrier
-    correlation of the latent, with no transition matrix to fit. Using the
-    *empirical* quantile makes the realised off fraction exactly `off_fraction`.
+    Cutting a correlated Gaussian series at a threshold to make a binary one is
+    called a Gaussian copula. The binary state inherits both the persistence of
+    the latent series and its correlation with the other carriers, with no
+    table of switching probabilities to fit. Cutting at the quantile measured
+    on the series itself makes the off fraction exactly `off_fraction`.
 
     Giving every carrier the same mask would force their correlation to one,
     which is the artefact this package exists to avoid.
@@ -246,9 +248,10 @@ def build_profiles(spec: DemandSpec, index: pd.DatetimeIndex,
     index
         Hourly timestamps. A full year is usual but any length works.
     knob
-        Internal residual correlation. Leave as ``None`` to solve for the one
-        that delivers `spec.carrier_correlation` in the finished profiles; pass
-        a number to use it directly, which is what the solver itself does.
+        Correlation between the carriers' latent series, which the generator
+        sets internally. Leave as ``None`` to solve for the value that delivers
+        `spec.carrier_correlation` in the finished profiles; pass a number to
+        use it directly, which is what the solver itself does.
     """
     process = get_class(spec.process_class)
     if knob is None:
@@ -310,12 +313,12 @@ def generate(spec: DemandSpec | None = None, year: int = 2025,
     any resolution, and the energy is divided by elapsed hours rather than by
     step count, so the mean power is unchanged.
 
-    Two honest caveats about sub-hourly output. The process classes were
-    calibrated on hourly meters, so their spread and persistence describe hourly
-    behaviour; asking for 15-minute steps renders those hourly statistics on a
+    Two caveats apply to sub-hourly output. The process classes were calibrated
+    on hourly meters, so their spread and persistence describe hourly
+    behaviour; asking for 15-minute steps draws those hourly statistics on a
     finer grid rather than adding measured sub-hourly structure. And the
-    calendar resolves to hour-of-day, so every step within an hour carries the
-    same calendar factor -- the sub-hourly variation is all residual.
+    calendar resolves to the hour of day, so every step within an hour carries
+    the same calendar factor: all sub-hourly variation comes from the residual.
     """
     if spec is None:
         spec = DemandSpec(**kwargs)
@@ -337,25 +340,27 @@ _KNOB_CACHE: dict[tuple, float] = {}
 def solve_correlation_knob(spec: DemandSpec, tolerance: float = 0.005,
                            max_iterations: int = 20,
                            hours_per_step: float = 1.0) -> float:
-    """Residual correlation that delivers the requested finished correlation.
+    """Internal correlation that delivers the requested finished correlation.
 
-    The knob and the observable are different numbers. Carriers share a
-    calendar, so the finished profiles are correlated even when their residuals
-    are independent -- every carrier dips on a Sunday and in July. The floor
-    this imposes is
+    The correlation the generator sets, between the carriers' latent series,
+    and the correlation you observe in the finished profiles are different
+    numbers. Carriers share a calendar, so the finished profiles are correlated
+    even when their residuals are independent -- every carrier dips on a Sunday
+    and in July. The floor this imposes is
 
         g(0) = CV_calendar^2 / CV_total^2
 
-    which for these process classes runs from 0.08 to 0.64. Asking for a
-    correlation below the floor is not achievable with a non-negative knob, and
-    the solver will return the knob that gets closest rather than pretending.
+    which for the shipped process classes runs from 0.08 to 0.64. No
+    non-negative internal correlation delivers less than the floor; asked for
+    less, the solver returns the value that comes closest.
 
-    Solved by bisection on a one-year draw. The answer depends only on the
-    process class, the target and the seed, so it is cached.
+    Solved by bisection, generating a year at each trial value. The answer
+    depends only on the process class, the target and the seed, so it is
+    cached.
 
-    The knob is solved at *zero lag*, so `carrier_correlation` is the peak of
-    the cross-correlogram. That is deliberate: it lets a lag sweep change timing
-    without also changing coupling strength.
+    It is solved at *zero lag*, so `carrier_correlation` is the peak of the
+    cross-correlogram. A lag sweep then changes timing without also changing
+    how tightly the carriers move together.
     """
     key = (spec.process_class, round(float(spec.carrier_correlation), 6),
            int(spec.seed), round(float(hours_per_step), 6))
