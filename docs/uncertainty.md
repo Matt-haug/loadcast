@@ -13,7 +13,7 @@ uncertain inputs:
 
 | input | low | high | from |
 |---|---|---|---|
-| `heat_to_cold` | 11.5 | 32.3 | food, beverages and tobacco: the two datasets of Rehfeldt et al. disagree by this much (`loadcast.reference.heat_to_cold_range`) |
+| `heat_to_cold` | 1.0 | 3.4 | food, beverages and tobacco: the two datasets of Rehfeldt et al. give 4.6 and 7.5 in final energy (`loadcast.reference.heat_to_cold_range`), delivered here with a boiler efficiency of 0.9 and a chiller COP of 2 to 4 ([Choosing inputs](inputs.md)) |
 | `elec_share` | 0.14 | 0.28 | a third either side of JERICHO-E-usage's industry-wide 0.213, which has no sector detail (`loadcast.reference.industry_composition`) |
 | `carrier_correlation` | 0.45 | 0.90 | no data: from just above the class's floor to tight coupling |
 | cold lag (h) | 0 | 12 | no data: from none to half a day, in whole hours |
@@ -41,7 +41,7 @@ theirs:
 ```python
 import loadcast
 
-middle = dict(heat_to_cold=21.9, elec_share=0.21, carrier_correlation=0.675,
+middle = dict(heat_to_cold=2.2, elec_share=0.21, carrier_correlation=0.675,
               cold_lag_h=6)
 
 def drift(heat_to_cold, elec_share, carrier_correlation, cold_lag_h, seed=1):
@@ -61,9 +61,10 @@ lag_sweep = {lag: drift(**{**middle, "cold_lag_h": lag}) for lag in range(0, 13,
 row shares its scale, so the slopes compare directly. The band spans five
 seeds; the peaks have none.*
 
-Each output answers to different inputs. The shares set the peaks: the heat
-peak falls from 2341 to 1960 kW as the electricity share rises across its
-range, and the cold peak from 180 to 68 kW as the heat-to-cold ratio does. The
+Each output answers to different inputs. The shares set the peaks: as the
+heat-to-cold ratio rises across its range, the heat peak rises from 1124 to
+1738 kW and the cold peak falls from 1124 to 511 kW; as the electricity share
+rises across its range, the heat peak falls from 1683 to 1409 kW. The
 coupling between carriers leaves the peaks untouched, because the cap on the
 peak holds each carrier at its mean divided by the class's load factor, whatever
 the seed. The drift is the reverse: it divides each carrier by its own mean, so
@@ -114,8 +115,8 @@ values, with lines at the 5th percentile, the median and the 95th percentile.*
 
 | output | P05 | median | P95 |
 |---|---|---|---|
-| heat peak (kW) | 1967 | 2155 | 2313 |
-| cold peak (kW) | 70 | 99 | 160 |
+| heat peak (kW) | 1197 | 1544 | 1774 |
+| cold peak (kW) | 528 | 712 | 1045 |
 | 24-hour drift (h) | 2.70 | 3.87 | 4.62 |
 
 The cold demand varies mostly in level, set by the heat-to-cold ratio, while

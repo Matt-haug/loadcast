@@ -17,6 +17,10 @@ profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=7.4,
 `profiles` is an hourly `DataFrame` of 8760 rows, with the columns `heat_kw`,
 `cold_kw`, `elec_kw` and `waste_kw`. The year is 2025 unless you pass `year=`.
 
+The energies are delivered: the heat and cold the process receives, and the
+electricity it uses for everything else. [Choosing inputs](inputs.md) shows how
+to read them off an energy bill, and what to use when the site cannot say.
+
 ## Choosing a process class
 
 A process class is the rhythm the demand follows: a calendar of how it varies

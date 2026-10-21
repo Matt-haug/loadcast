@@ -5,6 +5,49 @@ Notable changes to `loadcast`. This project follows
 
 ## [Unreleased]
 
+### Added
+- A documentation page, "Choosing inputs": how to turn an energy bill into the
+  inputs; published values by sector for when the site cannot answer, each with
+  its source and its limits; and the process and waste heat temperatures a
+  study needs, which the generator does not carry. It is a guide, not a
+  calibration. The README, the home page and the usage page point to it.
+- `loadcast.reference.temperature_bands`: heat by temperature band for 13 German
+  branches (Naegler et al., 2015), and heating and cooling by band for 7 UK
+  subsectors in two datasets (Rehfeldt et al., 2018). Naegler et al. join the
+  sources listed by `reference.sources()`.
+- The README and the documentation's home page point to the sister project
+  `pricecast`, by the same authors, for hourly electricity prices.
+
+### Changed
+- The documentation and `DemandSpec` state the energy basis: delivered energy,
+  the heat and cold the process receives and the electricity it uses for
+  everything else, not the fuel and electricity bought.
+- `heat_to_cold_range` gives `None` as its high value when one of the two
+  datasets reports no cooling for a subsector, as for paper: the ratio is then
+  unbounded above.
+
+### Fixed
+- The Rehfeldt et al. shares behind `heat_to_cold_range` were misread from
+  their Fig. 16. Re-measured from the figure to about +-1 percentage point,
+  food, beverages and tobacco has 11.8 % and 17.7 % cooling, not 8 % and 3 %,
+  so its heat-to-cold ratio is 4.6 to 7.5, not 11.5 to 32.3. Chemicals is 6.6
+  to 17.9, not 6.7 to 49; paper has cooling in one dataset (22.8), where none
+  was reported; machinery and transport has none that can be read, where 49 was
+  reported. The paper's text confirms the reading: ECUK gives food no space
+  heating, which the old values did.
+- Those ratios are final energy (fuel for heat, electricity for the chillers),
+  and the uncertainty page used them as the delivered ratio `generate` takes.
+  The docstrings now say so, and the new page gives the conversion. The
+  uncertainty page's food plant now samples a delivered heat-to-cold ratio of
+  1.0 to 3.4 (boiler efficiency 0.9, chiller COP 2 to 4) instead of 11.5 to
+  32.3, and its peaks and figures are regenerated. The drift and its Sobol
+  indices do not depend on the shares and are unchanged.
+- The claim that three metered food plants fall outside their branch's range
+  now compares like with like: on a delivered basis the branch spans 1.4 to
+  2.2 and the plants 0.33 to 44, a factor of 135 against 1.6, not 2.8.
+- The documentation build pins `pymdown-extensions` below 11: with 12.x,
+  mkdocstrings fails on every page that renders a docstring.
+
 ## [0.1.4] - 2026-10-21
 
 ### Changed

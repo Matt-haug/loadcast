@@ -842,9 +842,10 @@ md(r"""
 ---
 ## 14. Indicative published values
 
-`loadcast.reference` carries published starting points from three peer-reviewed
+`loadcast.reference` carries published starting points from four peer-reviewed
 sources — each used only for what it resolves, and each shipped **with its
-caveat** rather than as a default that quietly becomes an assumption.
+caveat** rather than as a default that quietly becomes an assumption. The
+documentation's *Choosing inputs* page shows how to use them.
 """)
 
 code(r"""
@@ -855,25 +856,40 @@ code(r"""
 print("industry-wide composition (JERICHO, German industry 2019):")
 print("  ", lc.reference.industry_composition())
 print()
-print("subsector heat:cold — the width of published disagreement, not an error bar:")
+print("subsector heat:cold, in final energy — the width of published disagreement:")
 lc.reference.reference_table()[["heat_to_cold_low", "heat_to_cold_high", "spread"]]
 """)
 
 md(r"""
 Those ranges are wide because Rehfeldt reports two datasets for the same
-subsectors and they disagree by more than the subsectors differ from one
-another: for food, heat:cold is 11.5 in one and 32.3 in the other.
+subsectors and they disagree by more than some subsectors differ from one
+another: for chemicals, heat:cold is 6.6 in one and 17.9 in the other.
+
+They are also **final energy**: fuel for heat, electricity for the chillers.
+`generate` takes delivered energy, so convert a ratio before you use it —
+multiply it by the boiler efficiency and divide it by the chillers' COP. Food's
+4.6 to 7.5 becomes 1.0 to 3.4 at an efficiency of 0.9 and a COP of 2 to 4.
 
 And a warning that matters more than the numbers: **branch aggregates cannot
-place a site.** Of three metered food plants, none fell inside the published
-range for its own branch — the within-branch spread was a factor of 135 against
-a branch range of 2.8. Use these to *start* a sweep, never to finish one.
+place a site.** Of three metered food plants, none falls inside the published
+range for its own branch — on a delivered basis (efficiency 0.9, COP 3) the
+branch spans 1.4 to 2.2 and the plants 0.33 to 44, a factor of 135 against 1.6.
+Use these to *start* a sweep, never to finish one.
 """)
 
 code(r"""
 lc.reference.sector_temperatures()[["process_p25_c", "process_median_c",
                                     "process_p75_c", "waste_median_c",
                                     "waste_to_process"]]
+""")
+
+md(r"""
+Naegler et al. split the heat of 13 German branches into five bands, from
+space heat and hot water to process heat above 1000 °C, in %:
+""")
+
+code(r"""
+lc.reference.temperature_bands("naegler")
 """)
 
 md(r"""

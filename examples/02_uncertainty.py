@@ -4,8 +4,10 @@ Follows docs/uncertainty.md. Needs `pip install loadcast scipy`.
 
 Four inputs are sampled, each uniformly over its range:
 
-    heat_to_cold          11.5 - 32.3   food, beverages and tobacco: the two datasets
-                                        of Rehfeldt et al. (loadcast.reference)
+    heat_to_cold          1.0 - 3.4     food, beverages and tobacco: the 4.6 - 7.5 of
+                                        Rehfeldt et al.'s two datasets, in final energy
+                                        (loadcast.reference), delivered with a boiler
+                                        efficiency of 0.9 and a chiller COP of 2 to 4
     elec_share            0.14 - 0.28   a third either side of the industry-wide
                                         0.213 of JERICHO-E-usage (loadcast.reference)
     carrier_correlation   0.45 - 0.90   from just above the class's floor, 0.434,
@@ -24,7 +26,7 @@ from scipy.stats import qmc
 import loadcast
 
 names = ["heat_to_cold", "elec_share", "carrier_correlation", "cold lag (h)"]
-low, high = [11.5, 0.14, 0.45, 0.0], [32.3, 0.28, 0.90, 12.0]
+low, high = [1.0, 0.14, 0.45, 0.0], [3.4, 0.28, 0.90, 12.0]
 samples = pd.DataFrame(qmc.scale(qmc.Sobol(d=4, seed=1).random(32), low, high),
                        columns=names)
 

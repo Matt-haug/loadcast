@@ -54,10 +54,17 @@
    "peer_reviewed": true,
    "scope": "German industry, 2019, 38 NUTS2 regions"
   },
+  "naegler": {
+   "caveat": "German shares from 2006, which the paper itself transfers to every EU28 country; it notes that the branch definitions are not well documented in its source. Heat only: no cooling and no electricity. Digitised from Fig. 3 (dataset DS2-1) to about +-1 percentage point. Steel and non-ferrous metals share one profile, as do minerals and mining, and construction and other.",
+   "citation": "Naegler T, Simon S, Klein M, Gils HC. Quantification of the European industrial heat demand by branch and temperature level. International Journal of Energy Research 39(15):2019-2030, 2015. doi:10.1002/er.3436",
+   "kind": "heat by temperature level, shares of branch heat demand",
+   "peer_reviewed": true,
+   "scope": "German industry, 2006, 13 branches"
+  },
   "rehfeldt": {
-   "caveat": "Digitised from Fig. 16 to about +-5 percentage points. Its own two datasets disagree by more than the subsectors differ from one another, so this is reported as a range and never as a point.",
+   "caveat": "Final energy: heat is the fuel burnt for it and cooling the electricity that drives it, so its heat:cold is not the delivered ratio generate() takes. Digitised from Fig. 16 to about +-1 percentage point; slices under 1 point cannot be read, and the FORECAST bars of machinery and transport, non-metallic minerals and other industry each show a hairline that may hold up to 1 % cooling. Its two datasets disagree by more than some subsectors differ, so a subsector is a range, never a point.",
    "citation": "Rehfeldt M, Fleiter T, Toro F. A bottom-up estimation of the heating and cooling demand in European industry. Energy Efficiency 11:1057-1082, 2018. doi:10.1007/s12053-017-9571-y",
-   "kind": "heat by temperature band and cooling, shares of subsector demand",
+   "kind": "heating and cooling by temperature band, shares of subsector final energy",
    "peer_reviewed": true,
    "scope": "UK industry, 7 subsectors, two datasets (ECUK and FORECAST)"
   },
@@ -69,89 +76,212 @@
    "scope": "EU-28, 2016 production, 4 sectors, ~66 products"
   }
  },
- "subsector_heat_to_cold": {
-  "Chemicals": {
-   "ECUK": {
-    "cold_pct": 13.0,
-    "heat_pct": 87.0,
-    "heat_to_cold": 6.7
+ "temperature_bands": {
+  "naegler": {
+   "Chemical": {
+    "process_100_500c": 21.5,
+    "process_500_1000c": 46.2,
+    "process_above_1000c": 11.2,
+    "process_below_100c": 13.8,
+    "space_heat_hot_water": 7.3
    },
-   "FORECAST": {
-    "cold_pct": 2.0,
-    "heat_pct": 98.0,
-    "heat_to_cold": 49.0
+   "Construction": {
+    "process_100_500c": 25.6,
+    "process_500_1000c": 16.6,
+    "process_above_1000c": 34.2,
+    "process_below_100c": 7.8,
+    "space_heat_hot_water": 15.8
+   },
+   "Food": {
+    "process_100_500c": 41.0,
+    "process_500_1000c": 0.0,
+    "process_above_1000c": 0.0,
+    "process_below_100c": 33.4,
+    "space_heat_hot_water": 25.6
+   },
+   "Machinery": {
+    "process_100_500c": 11.8,
+    "process_500_1000c": 6.3,
+    "process_above_1000c": 15.8,
+    "process_below_100c": 15.3,
+    "space_heat_hot_water": 50.8
+   },
+   "Minerals": {
+    "process_100_500c": 2.1,
+    "process_500_1000c": 30.3,
+    "process_above_1000c": 62.3,
+    "process_below_100c": 1.1,
+    "space_heat_hot_water": 4.2
+   },
+   "Mining": {
+    "process_100_500c": 2.1,
+    "process_500_1000c": 30.3,
+    "process_above_1000c": 62.3,
+    "process_below_100c": 1.1,
+    "space_heat_hot_water": 4.2
+   },
+   "NF-metals": {
+    "process_100_500c": 1.7,
+    "process_500_1000c": 19.5,
+    "process_above_1000c": 75.5,
+    "process_below_100c": 0.5,
+    "space_heat_hot_water": 2.8
+   },
+   "Other": {
+    "process_100_500c": 25.6,
+    "process_500_1000c": 16.6,
+    "process_above_1000c": 34.2,
+    "process_below_100c": 7.8,
+    "space_heat_hot_water": 15.8
+   },
+   "Paper and Print": {
+    "process_100_500c": 69.4,
+    "process_500_1000c": 0.0,
+    "process_above_1000c": 0.0,
+    "process_below_100c": 14.5,
+    "space_heat_hot_water": 16.1
+   },
+   "Steel": {
+    "process_100_500c": 1.7,
+    "process_500_1000c": 19.5,
+    "process_above_1000c": 75.5,
+    "process_below_100c": 0.5,
+    "space_heat_hot_water": 2.8
+   },
+   "Textile": {
+    "process_100_500c": 0.0,
+    "process_500_1000c": 0.0,
+    "process_above_1000c": 0.0,
+    "process_below_100c": 58.8,
+    "space_heat_hot_water": 41.2
+   },
+   "Transport": {
+    "process_100_500c": 11.9,
+    "process_500_1000c": 5.6,
+    "process_above_1000c": 16.0,
+    "process_below_100c": 15.6,
+    "space_heat_hot_water": 50.9
+   },
+   "Wood": {
+    "process_100_500c": 17.6,
+    "process_500_1000c": 0.0,
+    "process_above_1000c": 0.0,
+    "process_below_100c": 69.3,
+    "space_heat_hot_water": 13.1
    }
   },
-  "Food, beverages and tobacco": {
-   "ECUK": {
-    "cold_pct": 8.0,
-    "heat_pct": 92.0,
-    "heat_to_cold": 11.5
+  "rehfeldt": {
+   "Chemicals": {
+    "ECUK": {
+     "cooling": 13.2,
+     "heat_200_500c": 23.6,
+     "heat_above_500c": 16.0,
+     "heat_below_200c": 43.7,
+     "space_heating": 3.5
+    },
+    "FORECAST": {
+     "cooling": 5.3,
+     "heat_200_500c": 0.0,
+     "heat_above_500c": 67.6,
+     "heat_below_200c": 17.9,
+     "space_heating": 9.2
+    }
    },
-   "FORECAST": {
-    "cold_pct": 3.0,
-    "heat_pct": 97.0,
-    "heat_to_cold": 32.3
-   }
-  },
-  "Iron and steel, non-ferrous metals": {
-   "ECUK": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
+   "Food, beverages and tobacco": {
+    "ECUK": {
+     "cooling": 11.8,
+     "heat_200_500c": 9.4,
+     "heat_above_500c": 0.0,
+     "heat_below_200c": 78.8,
+     "space_heating": 0.0
+    },
+    "FORECAST": {
+     "cooling": 17.7,
+     "heat_200_500c": 4.2,
+     "heat_above_500c": 4.3,
+     "heat_below_200c": 51.4,
+     "space_heating": 22.4
+    }
    },
-   "FORECAST": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
-   }
-  },
-  "Machinery and Transport": {
-   "ECUK": {
-    "cold_pct": 2.0,
-    "heat_pct": 98.0,
-    "heat_to_cold": 49.0
+   "Iron and steel, non-ferrous metals": {
+    "ECUK": {
+     "cooling": 0.0,
+     "heat_200_500c": 6.0,
+     "heat_above_500c": 75.9,
+     "heat_below_200c": 13.4,
+     "space_heating": 4.7
+    },
+    "FORECAST": {
+     "cooling": 0.0,
+     "heat_200_500c": 4.2,
+     "heat_above_500c": 92.3,
+     "heat_below_200c": 1.4,
+     "space_heating": 2.1
+    }
    },
-   "FORECAST": {
-    "cold_pct": 2.0,
-    "heat_pct": 98.0,
-    "heat_to_cold": 49.0
-   }
-  },
-  "Non-metallic minerals": {
-   "ECUK": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
+   "Machinery and Transport": {
+    "ECUK": {
+     "cooling": 0.0,
+     "heat_200_500c": 0.0,
+     "heat_above_500c": 4.6,
+     "heat_below_200c": 49.6,
+     "space_heating": 45.8
+    },
+    "FORECAST": {
+     "cooling": 0.0,
+     "heat_200_500c": 10.6,
+     "heat_above_500c": 0.0,
+     "heat_below_200c": 31.1,
+     "space_heating": 58.3
+    }
    },
-   "FORECAST": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
-   }
-  },
-  "Other industry": {
-   "ECUK": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
+   "Non-metallic minerals": {
+    "ECUK": {
+     "cooling": 0.0,
+     "heat_200_500c": 6.1,
+     "heat_above_500c": 86.0,
+     "heat_below_200c": 6.3,
+     "space_heating": 1.6
+    },
+    "FORECAST": {
+     "cooling": 0.0,
+     "heat_200_500c": 11.5,
+     "heat_above_500c": 74.1,
+     "heat_below_200c": 8.6,
+     "space_heating": 5.8
+    }
    },
-   "FORECAST": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
-   }
-  },
-  "Paper": {
-   "ECUK": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
+   "Other industry": {
+    "ECUK": {
+     "cooling": 0.0,
+     "heat_200_500c": 11.2,
+     "heat_above_500c": 10.8,
+     "heat_below_200c": 45.2,
+     "space_heating": 32.8
+    },
+    "FORECAST": {
+     "cooling": 0.0,
+     "heat_200_500c": 21.4,
+     "heat_above_500c": 0.0,
+     "heat_below_200c": 69.2,
+     "space_heating": 9.4
+    }
    },
-   "FORECAST": {
-    "cold_pct": 0.0,
-    "heat_pct": 100.0,
-    "heat_to_cold": null
+   "Paper": {
+    "ECUK": {
+     "cooling": 0.0,
+     "heat_200_500c": 50.2,
+     "heat_above_500c": 9.8,
+     "heat_below_200c": 31.8,
+     "space_heating": 8.2
+    },
+    "FORECAST": {
+     "cooling": 4.2,
+     "heat_200_500c": 4.1,
+     "heat_above_500c": 1.6,
+     "heat_below_200c": 61.9,
+     "space_heating": 28.2
+    }
    }
   }
  }

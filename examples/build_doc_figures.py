@@ -53,8 +53,8 @@ LABELS = {"heat_to_cold": "heat-to-cold ratio",
           "elec_share": "electricity share",
           "carrier_correlation": "carrier correlation",
           "cold_lag_h": "cold lag (h)"}
-LOW = np.array([11.5, 0.14, 0.45, 0.0])
-HIGH = np.array([32.3, 0.28, 0.90, 12.0])
+LOW = np.array([1.0, 0.14, 0.45, 0.0])
+HIGH = np.array([3.4, 0.28, 0.90, 12.0])
 MIDDLE = dict(zip(INPUTS, (LOW + HIGH) / 2))
 OUTPUTS = {"heat_peak": ("heat peak (kW)", C["heat"]),
            "cold_peak": ("cold peak (kW)", C["cold"]),

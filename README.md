@@ -105,13 +105,20 @@ Inputs you can answer from a site visit or an energy bill:
 
 | input | meaning |
 |---|---|
-| `annual_mwh` | total annual energy across all carriers |
+| `annual_mwh` | total annual energy across all carriers, as delivered to the process |
 | `heat_to_cold` | ratio of annual heat to annual cold |
 | `elec_share` | electricity as a fraction of the total |
 | `process_class` | how the process runs: continuously, in shifts, in campaigns or in batches |
 | `carrier_correlation` | how tightly the carriers move together, once lined up at their best match |
 | `carrier_lag_h` | hours by which a carrier trails the others |
 | `seed` | random seed: the same inputs and seed give the same profiles |
+
+Every energy is *delivered*: the heat and cold the process receives, and the
+electricity it uses for everything else, not the fuel and electricity on the
+bill. The [choosing inputs](https://loadcast.readthedocs.io/en/latest/inputs/)
+page shows how to convert a bill. Where the site cannot answer, it gives
+published values by sector, temperatures included, each with its source and its
+limits. It is a guide: a sector average cannot place a single site.
 
 A process class is a rhythm calibrated on metered industrial sites: a calendar
 of how demand varies by month, weekday and hour, plus a load factor, a spread
@@ -182,7 +189,7 @@ ratio, electricity share, coupling and lag between carriers are all uncertain:
 from scipy.stats import qmc        # scipy is not a loadcast dependency
 
 samples = qmc.scale(qmc.Sobol(d=4, seed=1).random(32),
-                    [11.5, 0.14, 0.45, 0.0], [32.3, 0.28, 0.90, 12.0])
+                    [1.0, 0.14, 0.45, 0.0], [3.4, 0.28, 0.90, 12.0])
 years = [loadcast.generate(annual_mwh=10_000, heat_to_cold=k, elec_share=e,
                            process_class="semi_continuous", carrier_correlation=r,
                            carrier_lag_h={"cold": int(round(lag))}, seed=1)
@@ -199,7 +206,8 @@ result.
 
 - **No temperature.** It carries energy by carrier. Whether a machine can reach
   a process's temperature is a separate question, answered from the machine's
-  own limits.
+  own limits. The [choosing inputs](https://loadcast.readthedocs.io/en/latest/inputs/)
+  page points to published process and waste heat temperatures by sector.
 - **No validated cold shape.** No site in the calibration archive meters
   refrigeration. The cold carrier's annual quantity is whatever you specify,
   but its hourly shape rests on the same calendar and coupling as the other
@@ -216,10 +224,13 @@ Requires Python 3.9+, numpy and pandas. Nothing else.
 
 ## Documentation
 
-The [documentation](https://loadcast.readthedocs.io/en/latest/) has five parts:
+The [documentation](https://loadcast.readthedocs.io/en/latest/) has six parts:
 
 - [Usage](https://loadcast.readthedocs.io/en/latest/usage/): from the one-liner
   to a class built from your own measurements, and how to check what you got.
+- [Choosing inputs](https://loadcast.readthedocs.io/en/latest/inputs/): how to
+  read the inputs off an energy bill, and published values by sector,
+  temperatures included, for when the site cannot answer.
 - [Sweeps and uncertainty](https://loadcast.readthedocs.io/en/latest/uncertainty/):
   one input at a time, sampled inputs, and which inputs matter.
 - [Examples](https://loadcast.readthedocs.io/en/latest/examples/): the figures
@@ -238,6 +249,15 @@ The process classes are calibrated on metered industrial sites that cannot be
 redistributed. What ships is derived statistics and calendar factors: group
 means that carry no identifying information. The raw series are not part of
 this repository.
+
+## Sister project
+
+Does your study need hourly electricity prices as well as demand?
+[`pricecast`](https://pricecast.readthedocs.io/en/latest/), by the same
+authors, turns hourly load, solar and wind generation into a year of hourly
+day-ahead prices, with future years built from ENTSO-E's TYNDP scenarios. It
+follows the same idea: a few stated inputs give a year of hourly data, fast
+enough to sweep and to sample.
 
 ## Citing
 

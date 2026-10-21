@@ -79,12 +79,15 @@ class DemandSpec:
     Parameters
     ----------
     annual_mwh
-        Total annual energy across all three carriers, MWh. The generated
+        Total annual energy across all three carriers, MWh, as delivered: the
+        heat and cold the process receives and the electricity it uses for
+        everything else, not the fuel and electricity bought. The generated
         profiles reproduce this exactly.
     heat_to_cold
-        Ratio of annual heat demand to annual cold demand. Use ``None`` (the
-        default) for a site with no cooling demand, or ``0`` for one with no
-        heat demand.
+        Ratio of annual heat demand to annual cold demand, both delivered. Use
+        ``None`` (the default) for a site with no cooling demand, or ``0`` for
+        one with no heat demand. A ratio published in final energy, such as
+        `loadcast.reference.heat_to_cold_range`, must be converted first.
     elec_share
         Electricity as a fraction of the annual total.
     process_class

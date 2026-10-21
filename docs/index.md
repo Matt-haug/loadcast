@@ -53,6 +53,9 @@ site: the inputs are yours to choose.
 
 - [Usage](usage.md): from the one-liner to a class built from your own
   measurements, and how to check what you got.
+- [Choosing inputs](inputs.md): how to read the inputs off an energy bill, and
+  published values by sector, temperatures included, for when the site cannot
+  answer. A guide, with the source and the limits of every number.
 - [Sweeps and uncertainty](uncertainty.md): one input at a time, sampled
   inputs, and which inputs matter.
 - [Examples](examples.md): the figures of the tutorial notebook, each with what
@@ -60,3 +63,9 @@ site: the inputs are yours to choose.
 - [Mathematics](mathematics.md): every formula derived, with worked numbers and
   every symbol defined. Each derivation has a matching test.
 - [API reference](api.md): every public function and class.
+
+Does your study need hourly electricity prices as well as demand? Its sister
+project, [`pricecast`](https://pricecast.readthedocs.io/en/latest/), by the
+same authors, turns hourly load, solar and wind generation into a year of
+hourly day-ahead prices, with future years built from ENTSO-E's TYNDP
+scenarios.

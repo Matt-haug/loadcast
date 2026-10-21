@@ -1,3 +1,5 @@
 mkdocs>=1.5
 mkdocs-material>=9.0
 mkdocstrings[python]>=0.24
+# 12.x breaks mkdocstrings (Highlight() lost its md argument); unpin when fixed
+pymdown-extensions<11
