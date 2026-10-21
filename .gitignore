@@ -10,3 +10,6 @@ htmlcov/
 venv/
 site/
 .DS_Store
+
+# JOSS draft: kept local until the package has a record of use
+paper/
