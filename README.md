@@ -172,6 +172,29 @@ mismatch between two carriers hour by hour; it accumulates it. What sizes it is
 therefore the mismatch summed over the storage window, and the correlation is
 only one point of that picture.
 
+## Sweeps and uncertainty
+
+A year of demand takes about a second, so the uncertain inputs of a site can be
+sampled rather than argued. For a semi-continuous food plant whose heat-to-cold
+ratio, electricity share, coupling and lag between carriers are all uncertain:
+
+```python
+from scipy.stats import qmc        # scipy is not a loadcast dependency
+
+samples = qmc.scale(qmc.Sobol(d=4, seed=1).random(32),
+                    [11.5, 0.14, 0.45, 0.0], [32.3, 0.28, 0.90, 12.0])
+years = [loadcast.generate(annual_mwh=10_000, heat_to_cold=k, elec_share=e,
+                           process_class="semi_continuous", carrier_correlation=r,
+                           carrier_lag_h={"cold": int(round(lag))}, seed=1)
+         for k, e, r, lag in samples]
+```
+
+Feed each year to your design model, and fit a polynomial chaos expansion to
+its outputs to rank the inputs. Keep the same seed in every sample: the
+[uncertainty page](https://loadcast.readthedocs.io/en/latest/uncertainty/)
+shows why, where each range comes from, and what to check before reading the
+result.
+
 ## What it deliberately does not do
 
 - **No temperature.** It carries energy by carrier. Whether a machine can reach
@@ -193,16 +216,21 @@ Requires Python 3.9+, numpy and pandas. Nothing else.
 
 ## Documentation
 
-The [documentation](https://loadcast.readthedocs.io/en/latest/) has four parts:
+The [documentation](https://loadcast.readthedocs.io/en/latest/) has five parts:
 
 - [Usage](https://loadcast.readthedocs.io/en/latest/usage/): from the one-liner
   to a class built from your own measurements, and how to check what you got.
+- [Sweeps and uncertainty](https://loadcast.readthedocs.io/en/latest/uncertainty/):
+  one input at a time, sampled inputs, and which inputs matter.
 - [Examples](https://loadcast.readthedocs.io/en/latest/examples/): the figures
   of the tutorial notebook, each with what it shows.
 - [Mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/): every
   formula derived, with worked numbers and every symbol defined.
 - [API reference](https://loadcast.readthedocs.io/en/latest/api/): every public
   function and class.
+
+The [`examples/`](https://github.com/Matt-haug/loadcast/tree/main/examples)
+folder holds the tutorial notebook and a sampled food plant.
 
 ## Calibration data
 

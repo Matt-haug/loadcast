@@ -16,6 +16,15 @@ Notable changes to `loadcast`. This project follows
   load factor) and which only land near their targets (spread, persistence),
   and gives the row count of a sub-hourly year and the `waste_kw` column.
 
+### Added
+- A documentation page on sweeps and uncertainty propagation: one input at a
+  time, sampled inputs with the source of each range, and polynomial chaos
+  expansions with their leave-one-out check. It shows, on measured numbers, why
+  every sample should use the same seed and the study be repeated over a few.
+- `examples/02_uncertainty.py`: 32 years of demand for a semi-continuous food
+  plant, sampled over its heat-to-cold ratio, electricity share, coupling and
+  lag between carriers.
+
 ### Fixed
 - PyPI listed the co-authors as the authors and the first author only as
   an email; all three are now authors, with a maintainer contact.

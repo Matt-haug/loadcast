@@ -53,6 +53,8 @@ site: the inputs are yours to choose.
 
 - [Usage](usage.md): from the one-liner to a class built from your own
   measurements, and how to check what you got.
+- [Sweeps and uncertainty](uncertainty.md): one input at a time, sampled
+  inputs, and which inputs matter.
 - [Examples](examples.md): the figures of the tutorial notebook, each with what
   it shows.
 - [Mathematics](mathematics.md): every formula derived, with worked numbers and
