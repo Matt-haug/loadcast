@@ -5,6 +5,14 @@ applies them. A test in `tests/test_identities.py` checks each step. Where a
 formula is exact, the test is tight; where it holds only on average over many
 draws, the test says so and gives its tolerance.
 
+Nothing on this page is new time-series theory. The building blocks are
+textbook ones: a first-order autoregression, its exponential, correlated
+Gaussian series, and the cutting of a Gaussian series into an on/off one. Box
+et al. (2015) treat the autoregression and its correlation structure at length.
+What `loadcast` adds is the way these pieces are put together, so that the
+statistics a user chooses (load factor, spread, persistence, coupling between
+carriers) come out as asked.
+
 ## Nomenclature
 
 | symbol | meaning | units |
@@ -471,3 +479,8 @@ the targets fixed and varying only the seed is stable, as it must be:
 | 8 | 0.401 | 0.479 | 0.871 |
 
 So vary the seed for another draw of the same site; never refit on the output.
+
+## Reference
+
+Box GEP, Jenkins GM, Reinsel GC, Ljung GM. *Time Series Analysis: Forecasting
+and Control*, 5th edition. Wiley, Hoboken, NJ, 2015. ISBN 978-1-118-67502-1.

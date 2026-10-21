@@ -15,6 +15,9 @@ Notable changes to `loadcast`. This project follows
   branches (Naegler et al., 2015), and heating and cooling by band for 7 UK
   subsectors in two datasets (Rehfeldt et al., 2018). Naegler et al. join the
   sources listed by `reference.sources()`.
+- The mathematics page credits the time-series theory it builds on (Box,
+  Jenkins, Reinsel and Ljung, *Time Series Analysis*): the package adds no new
+  theory, only a way of combining it to produce the signals a user asks for.
 - The README and the documentation's home page point to the sister project
   `pricecast`, by the same authors, for hourly electricity prices.
 
