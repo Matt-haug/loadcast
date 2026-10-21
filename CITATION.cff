@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "loadcast: a synthetic multi-carrier industrial energy demand profiles generator"
+title: "loadcast: a synthetic multi-carrier industrial energy demand time series generator"
 abstract: >-
   Generates hourly heat, cold and electricity demand for an industrial site
   from a handful of observable inputs, with the correlation and the lag between
