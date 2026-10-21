@@ -70,15 +70,59 @@ def test_rescale_persistence_is_the_power_law():
 
 @pytest.mark.parametrize("freq,mult", FREQS)
 def test_lag_is_given_in_hours_at_every_resolution(freq, mult):
+    """The lag goes in in hours, and the correlogram reports it in hours."""
     frame = lc.generate(annual_mwh=10_000, heat_to_cold=2.0, elec_share=0.2,
                         process_class="semi_continuous",
                         carrier_correlation=0.75, carrier_lag_h={"cold": 6},
                         freq=freq)
     correlogram = lc.cross_correlogram(frame["heat_kw"], frame["cold_kw"],
-                                       max_lag=12 * mult)
-    peak_steps = int(correlogram.loc[correlogram["correlation"].idxmax(),
-                                     "lag_h"])
-    assert peak_steps / mult == pytest.approx(6.0, abs=0.5)
+                                       max_lag=12)
+    assert len(correlogram) == 24 * mult + 1
+    assert correlogram["lag_h"].min() == -12 and correlogram["lag_h"].max() == 12
+    peak = correlogram.loc[correlogram["correlation"].idxmax(), "lag_h"]
+    assert peak == pytest.approx(6.0, abs=0.5)
+
+
+def test_correlogram_of_a_bare_array_takes_the_step_length():
+    """Without a time index the step length cannot be read, so it is given."""
+    frame = lc.generate(annual_mwh=10_000, heat_to_cold=2.0, elec_share=0.2,
+                        carrier_correlation=0.75, carrier_lag_h={"cold": 6},
+                        freq="15min")
+    heat, cold = frame["heat_kw"].to_numpy(), frame["cold_kw"].to_numpy()
+    correlogram = lc.cross_correlogram(heat, cold, max_lag=12,
+                                       hours_per_step=0.25)
+    peak = correlogram.loc[correlogram["correlation"].idxmax(), "lag_h"]
+    assert peak == pytest.approx(6.0, abs=0.5)
+    assert lc.integrated_drift(heat, cold, 24, hours_per_step=0.25) == \
+        pytest.approx(lc.integrated_drift(frame["heat_kw"], frame["cold_kw"], 24))
+
+
+@pytest.mark.parametrize("freq,_", FREQS)
+def test_annual_energy_statistic_counts_elapsed_hours(freq, _):
+    frame = lc.generate(annual_mwh=10_000, heat_to_cold=2.0, elec_share=0.2,
+                        freq=freq)
+    expected = 10_000 * 0.8 * 2.0 / 3.0
+    assert lc.profile_statistics(frame["heat_kw"])["annual_mwh"] == \
+        pytest.approx(expected, rel=1e-9)
+    assert lc.summary_table(frame).loc["heat_kw", "annual_mwh"] == \
+        pytest.approx(expected, rel=1e-6)
+
+
+def test_drift_is_the_same_in_hours_at_every_resolution():
+    """A 24-hour window spans a day at any step length, and the summed
+    mismatch is weighted by the step, so the same site drifts the same."""
+    def mean_drift(freq):
+        drifts = []
+        for seed in (1, 2, 3):
+            frame = lc.generate(annual_mwh=10_000, heat_to_cold=2.0,
+                                elec_share=0.2, carrier_correlation=0.75,
+                                carrier_lag_h={"cold": 6}, freq=freq, seed=seed)
+            drifts.append(lc.integrated_drift(frame["heat_kw"],
+                                              frame["cold_kw"], window_h=24))
+        return float(np.mean(drifts))
+
+    hourly = mean_drift("h")
+    assert mean_drift("15min") == pytest.approx(hourly, rel=0.1)
 
 
 def test_step_hours_ignores_a_single_odd_gap():

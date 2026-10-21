@@ -119,8 +119,12 @@ the same at every step length. The process classes were calibrated on hourly
 meters, though, so a 15-minute profile spreads hourly behaviour over a finer
 grid; it adds no measured sub-hourly detail.
 
-The diagnostics below count offsets and windows in time steps, not hours. On a
-15-minute profile, a day is 96 steps.
+The diagnostics below read the step length from the frame's index, so their
+offsets, windows and energies are in hours at any step length:
+`max_lag=12` spans twelve hours, and `window_h=24` a day. Only `lag1` in
+`summary_table` is per step, as the generator's persistence is; on 15-minute
+steps, raise it to the power 4 for the value one hour later. For a bare array
+with no time index, pass `hours_per_step`.
 
 ## Generating from your own measurements
 

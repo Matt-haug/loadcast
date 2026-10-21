@@ -45,8 +45,13 @@ Notable changes to `loadcast`. This project follows
   `solve_correlation_knob` in the wrong module and did not document
   `waste_to_heat`; the examples page gave waste heat a correlation of its own,
   which it does not have.
-- The diagnostics now say that their offsets and windows count time steps, not
-  hours, which matters for sub-hourly profiles.
+- The diagnostics now work in hours at any step length. They counted time
+  steps, so on a 15-minute profile `cross_correlogram` reported offsets in
+  quarter-hours, `integrated_drift(window_h=24)` summed six hours rather than a
+  day, and `profile_statistics` gave four times the annual energy. Each now
+  reads the step length from the series' time index, or from a new
+  `hours_per_step` argument for a bare array; `lag_h` is in hours and the drift
+  is weighted by the step. Hourly results are unchanged.
 
 ## [0.1.3] - 2026-10-09
 
