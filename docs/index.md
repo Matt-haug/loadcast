@@ -46,8 +46,15 @@ profiles = loadcast.generate(
 pip install loadcast
 ```
 
+A shipped process class gives a first result with nothing to tune. Everything
+else is yours to set when you know it: the site's calendar (from its shift
+schedule, a week of metering or twelve monthly bills), how often it stops, each
+carrier's rated capacity, and a calendar of its own for a carrier that keeps
+other hours.
+
 The annual energy, the heat-to-cold ratio, the electricity share and the load
-factor come out exact; spread and persistence land near their targets. The
+factor come out exact; spread and persistence land near their targets.
+Whatever cannot be delivered as asked draws a warning that says why. The
 generator does not model temperature, and it makes no claim about any real
 site: the inputs are yours to choose.
 

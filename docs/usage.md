@@ -1,7 +1,8 @@
 # Usage
 
-This page goes from the one-line call to a process class built from your own
-measurements, then shows how to check what the generator produced. Sweeping
+This page goes from the one-line call to a site fitted to what you know of
+it -- its calendar, its stops, its ratings -- then shows how to check what the
+generator produced. Sweeping
 and sampling the inputs has its own page,
 [Sweeps and uncertainty](uncertainty.md).
 
@@ -26,7 +27,9 @@ to read them off an energy bill, and what to use when the site cannot say.
 A process class is the rhythm the demand follows: a calendar of how it varies
 by month, weekday and hour, and how widely and for how long it strays from that
 calendar. Choose it from what you know of the site's process, not by trying each
-class and keeping the one that gives the answer you expected.
+class and keeping the one that gives the answer you expected. It is a starting
+point: [the next section](#fitting-the-class-to-your-site) changes its
+calendar or any of its numbers.
 
 | class | what it looks like | measured on |
 |---|---|---|
@@ -46,6 +49,155 @@ for name in loadcast.available_classes():
     process = loadcast.get_class(name)
     print(name, process.description, process.target_load_factor)
 ```
+
+## Fitting the class to your site
+
+A shipped class gives a first result with nothing to tune, from a metered
+plant. When you know your site differs, change what you know and keep the rest:
+the calendar, how often the process stops, its load factor, spread or
+persistence, and each carrier's load factor or rating. Every change below is an ordinary
+argument, so it can be swept like `heat_to_cold`; the
+[sweeps page](uncertainty.md#the-sites-structure) shows how.
+
+### Your own calendar
+
+The calendar is when the site runs: twelve month factors and a factor for each
+of the 168 hours of the week. Build it from what you have:
+
+```python
+from loadcast import Calendar
+
+# the shifts the site runs, and its load outside them
+two_shifts = Calendar.from_schedule(
+    [("Mon-Fri", 6, 22), ("Sat", 6, 14)],        # (days, start hour, end hour)
+    base_load=0.25,                              # a quarter of a shift's load
+    months=Calendar.of("semi_continuous").month,  # keep the class's seasons
+)
+
+# or twelve monthly energies, as on the bills
+two_shifts = two_shifts.with_monthly_energy(
+    [820, 790, 850, 800, 830, 780, 610, 420, 800, 840, 830, 700])
+
+# or a metered series, a week or longer: hourly or sub-hourly
+measured = Calendar.from_series(meter["kW"])
+
+two_shifts.describe()      # the week as a 7 x 24 table
+```
+
+A block that ends before it starts runs past midnight: `("Mon-Fri", 22, 6)` is
+a night shift. A schedule says nothing about seasons, so its months are flat
+unless you give `months` or monthly energies. A metered series shorter than a
+year gives the week but flat months, for the same reason.
+
+Then put the calendar on the class closest to your site:
+
+```python
+process = loadcast.custom_class("semi_continuous", calendar=two_shifts)
+profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=2.2,
+                             elec_share=0.21, process_class=process)
+```
+
+![One week of heat demand for the same plant on the shipped calendar, on two shifts and a Saturday morning, and on one shift](assets/figures/usage_calendar.png)
+
+*One week of heat demand, same plant, same annual energy, same seed. The
+weekend is shaded. On a shorter schedule the same energy falls in fewer hours,
+so the peaks rise.*
+
+The class keeps its own fluctuation within the running hours, and derives the
+spread and load factor that go with your calendar; the
+[mathematics](mathematics.md#12-fitting-the-class-to-a-site) gives the
+formulas. A sharper calendar couples the carriers more: two shifts on weekdays
+raise the correlation floor of the semi-continuous class from 0.46 to about
+0.74, because every carrier stops at night and at the weekend.
+
+### Changing a class's other numbers
+
+The same function changes anything else. Give only what you know:
+
+```python
+# the same plant, stopped 30 % of the time
+loadcast.custom_class("semi_continuous", off_fraction=0.3)
+
+# a load factor and a spread you measured
+loadcast.custom_class("continuous", load_factor=0.62, cv=0.35)
+```
+
+Whatever you leave out is carried over so the plant behaves as before while it
+runs: more stops lower the load factor and raise the spread together, so both
+targets stay reachable. A number you give replaces the derived one.
+
+![Two weeks of heat demand for the same plant stopped 0, 20 and 40 % of the hours](assets/figures/usage_stops.png)
+
+*Two weeks of heat demand. Each stop drops the demand to its idle level; the
+running hours carry the same energy, so the peaks rise.*
+
+A class built this way is an ordinary object: pass it as `process_class`, with
+no registering. `register_class` only lets you call it by name.
+
+### Load factors and ratings
+
+Every carrier's profile has a cap, which sets its peak. By default the cap
+comes from the class's load factor, mean demand over peak. A plant is defined
+by what it can draw as well as by what it uses in a year, so you can set the
+cap per carrier, in either of two ways:
+
+```python
+# the load factor: mean demand over peak
+profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=2.2,
+                             elec_share=0.21, load_factor={"heat": 0.50})
+
+# the rating: the peak itself, in kW
+profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=2.2,
+                             elec_share=0.21, rated_kw={"heat": 1000})
+```
+
+![Load duration curves and one week of heat demand with the cap from the class's load factor, from a load factor of 0.5, and from a rating of 1000 kW](assets/figures/usage_cap.png)
+
+*The same heat demand, capped three ways. The cap flattens the top of the load
+duration curve and leaves the rest of the year alone; the lower the cap, the
+more hours it holds.*
+
+The two say the same thing. The annual energy fixes the mean demand, here
+620 kW for heat, so a rating of 1000 kW is a load factor of 0.62, and a load
+factor of 0.50 is a peak of 1240 kW. A carrier therefore takes one or the
+other: asked for both, the generator says what each implies.
+
+```text
+ValueError: give heat a rated_kw or a load_factor, not both: with 5431 MWh a
+year its mean demand is 620 kW, so a rating of 1300 kW already is a load
+factor of 0.477, and a load factor of 0.500 a rating of 1240 kW
+```
+
+Different carriers can take different ones, and carriers you set neither for
+keep the class's load factor. Give the peak the carrier actually reaches: the
+measured peak demand, or the rating of equipment that runs flat out at peak.
+An oversized nameplate is never reached, and the generator warns; a rating
+below the mean demand cannot deliver the year's energy, and raises an
+error.
+
+### A calendar for one carrier
+
+Carriers share the class's calendar unless you say otherwise. Cold rooms keep
+cold through the weekend while production stops:
+
+```python
+always_on = Calendar.from_schedule([("daily", 0, 24)])
+profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=2.2,
+                             elec_share=0.21,
+                             calendars={"cold": always_on})
+```
+
+![One week of heat and cold demand, each over its mean, with cold on the class's calendar and then on a flat calendar of its own](assets/figures/usage_own_calendar.png)
+
+*One week of heat and cold, each divided by its mean. On its own calendar, cold
+keeps running through the shaded weekend while heat drops.*
+
+The carrier keeps the class's fluctuation, and takes a load factor that suits
+its own calendar. Sharing
+less calendar, the carriers can be far less coupled: here the correlation
+floor falls from 0.46 to about zero.
+`loadcast.correlation_floor(spec)` gives the floor of a site with its own
+calendars and ratings.
 
 ## A site with only some carriers
 
@@ -170,8 +322,9 @@ profiles = loadcast.generate(process_class="my_plant", annual_mwh=5_000,
                              heat_to_cold=3.0, elec_share=0.15)
 ```
 
-The calendar comes from the class you name, because measuring one takes a full
-year of metering, which a user rarely has. Everything else comes from your
+The calendar comes from the class you name unless you pass your own with
+`calendar=` (see [your own calendar](#your-own-calendar)): a schedule, a week
+of metering or twelve monthly bills will do. Everything else comes from your
 numbers, through closed-form formulas.
 
 If your process stops rather than merely running low, pass `off_fraction`, the
@@ -243,6 +396,41 @@ is the mismatch summed over the storage window. Each carrier is divided by its
 own mean first, so the drift measures timing, not size, in hours of mean
 demand. The correlation is one point of this picture, and two carrier pairs
 with the same correlation can differ severalfold here.
+
+### When a target cannot be met
+
+Some combinations cannot be delivered as asked: a rating above the profile's
+own peaks, a correlation below the floor, a spread smaller than the calendar
+already makes. The generator then issues a `TargetMissedWarning` that says
+what was asked, what came out and why:
+
+```text
+TargetMissedWarning: cold load_factor: asked 0.094, delivered 0.270, because
+its highest step is 1043 kW, below its rating of 3000 kW: the cap is never
+reached, so the profile's own peaks set the load factor. A rating well above
+the peak demand, such as an oversized nameplate, leaves the cap unused: give
+the measured peak demand instead, or use a class with a wider spread.
+```
+
+The shipped classes at their defaults never warn. `delivery_report` gives the
+whole comparison as a table, one row per carrier and statistic:
+
+```python
+spec = loadcast.DemandSpec(annual_mwh=10_000, heat_to_cold=2.2,
+                           rated_kw={"heat": 1300})
+report = loadcast.delivery_report(spec, loadcast.generate(spec))
+report[["carrier", "statistic", "requested", "delivered", "status"]]
+```
+
+The annual energy, the composition and the load factor are exact; the spread
+and the persistence are aimed at, and land within a band whose width the
+[mathematics](mathematics.md#what-is-checked-and-when-it-warns) gives. In a
+sweep, silence the warnings and keep the reports instead:
+
+```python
+import warnings
+warnings.simplefilter("ignore", loadcast.TargetMissedWarning)
+```
 
 ## Seeds and reproducibility
 

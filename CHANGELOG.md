@@ -6,6 +6,42 @@ Notable changes to `loadcast`. This project follows
 ## [Unreleased]
 
 ### Added
+- Your own calendar: `loadcast.Calendar`, twelve month factors and 168
+  hour-of-week factors, built from a shift schedule (`from_schedule`, with a
+  base load outside the shifts), a metered series of a week or more
+  (`from_series`), twelve monthly bills (`with_monthly_energy`) or a shipped
+  class (`Calendar.of`). A week of 168 factors lets each day keep its own
+  hours, such as a Saturday morning shift.
+- `loadcast.custom_class`: a shipped class with any of its numbers changed --
+  calendar, share of hours stopped, idle level, load factor, spread,
+  persistence. What is not given is derived so the plant behaves as the base
+  does while it runs: the base's fluctuation is kept, and the load factor is
+  the one whose cap clips the same share of hours as the base's
+  (`matched_load_factor`).
+- `DemandSpec.rated_kw`: each carrier's rating in kW, which becomes the cap on
+  its profile: the peak equals the rating, and the load factor is the mean
+  demand over it.
+- `DemandSpec.load_factor`: each carrier's load factor, the other way to set
+  its cap. A carrier takes a rating or a load factor, not both: with its annual
+  energy fixed, each implies the other, and the error says so in numbers.
+- `DemandSpec.calendars`: a calendar of its own for a carrier that keeps other
+  hours, such as cold rooms running through the weekend. It lowers the
+  correlation floor accordingly.
+- `DemandSpec.process_class` takes a `ProcessClass` object, so a class built in
+  a loop needs no registering.
+- `loadcast.delivery_report` and `loadcast.TargetMissedWarning`: every
+  statistic asked against what was delivered, and a warning naming the cause
+  of each miss -- a rating above the profile's own peaks, a load factor the
+  calendar makes unreachable, a correlation below the floor, a spread smaller
+  than the calendar already makes. The shipped classes at their defaults never
+  warn.
+- `correlation_floor` of a `DemandSpec` measures the floor of that site, own
+  calendars and ratings included.
+- The usage page gains a section on fitting a class to a site, with four
+  figures (`usage_*.png`, drawn by `examples/build_doc_figures.py`); the uncertainty
+  page sweeps the calendar, the share of hours stopped and a rating, with a
+  figure; the mathematics page derives all of it (section 12); the "Choosing
+  inputs" page says where a calendar and a rating come from.
 - A documentation page, "Choosing inputs": how to turn an energy bill into the
   inputs; published values by sector for when the site cannot answer, each with
   its source and its limits; and the process and waste heat temperatures a
@@ -22,6 +58,13 @@ Notable changes to `loadcast`. This project follows
   `pricecast`, by the same authors, for hourly electricity prices.
 
 ### Changed
+- Every figure of the documentation and the tutorial notebook shares one style,
+  `examples/figure_style.py`: a carrier keeps one colour, variants of it are
+  shades of that colour, and anything that is not a carrier is ink or grey;
+  titles at the left; weeks from Monday with the weekend shaded and day names on
+  the axis; legends kept off the data; captions on the page, not in the image.
+- `carrier_correlation` defaults to `None`: 0.47, raised to the floor without a
+  warning where the floor is higher, as before.
 - The documentation and `DemandSpec` state the energy basis: delivered energy,
   the heat and cold the process receives and the electricity it uses for
   everything else, not the fuel and electricity bought.
@@ -30,6 +73,15 @@ Notable changes to `loadcast`. This project follows
   unbounded above.
 
 ### Fixed
+- The cap could stop short of its fixed point: it ran eight passes, enough for
+  the shipped classes but not for a tight rating, where the peak overshot by
+  0.03 %. It now runs until the peak is within 1e-12 of the cap. Profiles
+  generated before move by less than one part in ten million.
+- The correlation solver cached its answer by class *name*, so a class rebuilt
+  under the same name with other numbers reused a stale solution. It now keys
+  on the class itself, and on the heat and cold caps and calendars.
+- A correlation asked below the floor, and a load factor the cap could not
+  reach, were delivered differently without a word. Both now warn.
 - The Rehfeldt et al. shares behind `heat_to_cold_range` were misread from
   their Fig. 16. Re-measured from the figure to about +-1 percentage point,
   food, beverages and tobacco has 11.8 % and 17.7 % cooling, not 8 % and 3 %,

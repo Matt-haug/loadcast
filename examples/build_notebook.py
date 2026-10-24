@@ -68,24 +68,16 @@ import pandas as pd
 import loadcast as lc
 from loadcast import fitting, generator
 
+import figure_style as fs   # the house style, shared with the documentation
+
 FIG = Path("figures")
-FIG.mkdir(exist_ok=True)
+fs.apply()
+# The carriers keep one colour throughout; waste heat is also dashed, so it
+# never relies on hue alone.
+C = fs.CARRIER
 
-# One palette for the whole notebook. The three carriers are drawn in colours
-# that stay distinguishable to a colourblind reader; waste heat is also dashed,
-# so it never relies on hue alone.
-C = {"heat": "#eb6834", "cold": "#2a78d6", "elec": "#1baf7a", "waste": "#4a3aa7"}
-plt.rcParams.update({
-    "figure.dpi": 110, "figure.figsize": (9, 3.2),
-    "axes.spines.top": False, "axes.spines.right": False,
-    "axes.grid": True, "grid.alpha": 0.25, "grid.linewidth": 0.6,
-    "font.size": 9, "axes.titlesize": 10, "axes.titleweight": "bold",
-    "legend.frameon": False,
-})
-
-def save(name):
-    plt.tight_layout()
-    plt.savefig(FIG / f"{name}.png", dpi=150, bbox_inches="tight")
+def save(fig, name):
+    fs.save(fig, FIG, name, close=False)
 
 print("loadcast", lc.__version__)
 print("process classes:", lc.available_classes())
@@ -128,14 +120,16 @@ print(f"minimum value    {profiles.to_numpy().min():10.4f} kW    (never negative
 """)
 
 code(r"""
-week = profiles.loc["2025-06-09":"2025-06-15"]
-fig, ax = plt.subplots()
+week = profiles.loc["2025-06-09":"2025-06-15 23:00"]      # Monday to Sunday
+fig, ax = plt.subplots(figsize=fs.size(1, height=3.0))
+fs.weekends(ax, week.index)
 for key, col in (("heat", "heat_kw"), ("cold", "cold_kw"), ("elec", "elec_kw")):
-    ax.plot(week.index, week[col] / week[col].mean(), color=C[key], lw=1.4, label=key)
-ax.set_ylabel("× own mean")
-ax.set_title("One week, each carrier normalised to its own mean")
-ax.legend(ncol=3)
-save("01_one_week")
+    ax.plot(week.index, week[col] / week[col].mean(), color=C[key], lw=1.3, label=key)
+ax.set_ylabel("demand / its own mean")
+fs.days(ax, week.index)
+fs.legend(ax)
+fs.title(fig, "One week, each carrier divided by its own mean")
+save(fig, "01_one_week")
 plt.show()
 """)
 
@@ -176,18 +170,20 @@ latent = generator.correlated_ar1(8760, 1, phi=process.target_lag1,
 residual = generator.lognormal_from_latent(latent, sigma)[0]
 product = calendar * residual
 
-fig, axes = plt.subplots(3, 1, figsize=(9, 5.4), sharex=True)
-span = slice(3600, 3600 + 336)     # a fortnight
+fig, axes = plt.subplots(3, 1, figsize=fs.size(3, height=5.6), sharex=True)
+span = slice(3648, 3648 + 336)     # a fortnight, from Monday 2 June
 for ax, series, title in (
-    (axes[0], calendar, "calendar  S(t)   — month × day-of-week × hour"),
-    (axes[1], residual, "residual  R(t)   — lognormal AR(1), mean one"),
-    (axes[2], product, "product   S·R"),
+    (axes[0], calendar, "the calendar S(t): month × weekday × hour"),
+    (axes[1], residual, "the fluctuation R(t): a lognormal AR(1) of mean one"),
+    (axes[2], product, "their product, S(t)·R(t)"),
 ):
-    ax.plot(index[span], series[span], color="#52514e", lw=1.1)
-    ax.axhline(1.0, color=C["heat"], lw=0.9, ls="--")
-    ax.set_title(title, loc="left")
-axes[2].set_xlabel("")
-save("02_decomposition")
+    fs.weekends(ax, index[span])
+    ax.plot(index[span], series[span], color=fs.INK, lw=1.0)
+    fs.reference(ax, 1.0)
+    ax.set_title(title)
+fs.days(axes[2], index[span], weekly=True)
+fs.title(fig, "A profile is a calendar times a fluctuation")
+save(fig, "02_decomposition")
 plt.show()
 
 print(f"E[S] = {calendar.mean():.4f}     E[R] = {residual.mean():.4f}     (both should be 1)")
@@ -237,13 +233,13 @@ phi, sig = 0.97, 0.35
 paths_ok = generator.correlated_ar1(600, 300, phi=phi, sigma=sig, correlation=0.0, rng=rng)
 paths_naive = np.array([naive_ar1(600, phi, sig, rng) for _ in range(300)])
 
-fig, axes = plt.subplots(1, 2, figsize=(9, 2.9))
-axes[0].plot(paths_ok.std(axis=0), color=C["elec"], lw=1.6, label="with √(1−φ²), started stationary")
-axes[0].plot(paths_naive.std(axis=0), color=C["heat"], lw=1.6, label="naive")
-axes[0].axhline(sig, color="#52514e", ls="--", lw=0.9)
-axes[0].set_title("Spread across 300 paths, hour by hour", loc="left")
+fig, axes = plt.subplots(1, 2, figsize=fs.size(1, height=3.1))
+axes[0].plot(paths_naive.std(axis=0), color=fs.GREY, lw=1.6, ls="--", label="naive")
+axes[0].plot(paths_ok.std(axis=0), color=fs.INK, lw=1.6, label="with √(1−φ²), started stationary")
+fs.reference(axes[0], sig, style=":")
+axes[0].set_title("Spread across 300 paths, hour by hour")
 axes[0].set_xlabel("hour"); axes[0].set_ylabel("standard deviation")
-axes[0].legend(fontsize=7.5)
+axes[0].legend(loc="center right")
 
 sigmas = np.linspace(0.05, 1.2, 40)
 corrected = [generator.lognormal_from_latent(
@@ -251,13 +247,14 @@ corrected = [generator.lognormal_from_latent(
     for s in sigmas]
 uncorrected = [np.exp(generator.correlated_ar1(
     20_000, 1, 0.5, s, 0.0, np.random.default_rng(3))).mean() for s in sigmas]
-axes[1].plot(sigmas, corrected, color=C["elec"], lw=1.6, label="exp(z − σ²/2)")
-axes[1].plot(sigmas, uncorrected, color=C["heat"], lw=1.6, label="exp(z)")
-axes[1].axhline(1.0, color="#52514e", ls="--", lw=0.9)
-axes[1].set_title("Mean of the residual against its spread", loc="left")
+axes[1].plot(sigmas, uncorrected, color=fs.GREY, lw=1.6, ls="--", label="exp(z)")
+axes[1].plot(sigmas, corrected, color=fs.INK, lw=1.6, label="exp(z − σ²/2)")
+fs.reference(axes[1], 1.0, style=":")
+axes[1].set_title("Mean of the residual against its spread")
 axes[1].set_xlabel("σ"); axes[1].set_ylabel("E[R]")
-axes[1].legend(fontsize=7.5)
-save("03_two_constants")
+axes[1].legend(loc="upper left")
+fs.title(fig, "Two constants that keep the fluctuation honest")
+save(fig, "03_two_constants")
 plt.show()
 """)
 
@@ -388,41 +385,44 @@ state inherits both the persistence and the cross-carrier correlation for free.
 """)
 
 code(r"""
-fig, axes = plt.subplots(2, 2, figsize=(9, 4.6), sharey=True)
+fig, axes = plt.subplots(2, 2, figsize=fs.size(2, height=4.8), sharex=True, sharey=True)
 for ax, name in zip(axes.flat, ["continuous", "semi_continuous", "campaign", "batch"]):
     frame = lc.generate(annual_mwh=10_000, heat_to_cold=None, elec_share=0.0,
                         process_class=name, seed=5)
-    s = frame["heat_kw"].iloc[2400:2400 + 336]
-    ax.plot(s.index, s.values, color=C["heat"], lw=1.0)
+    s = frame["heat_kw"].loc["2025-04-07":"2025-04-20 23:00"]    # from a Monday
+    fs.weekends(ax, s.index)
+    ax.plot(s.index, s.values, color=C["heat"], lw=0.9)
     st = lc.profile_statistics(frame["heat_kw"])
-    ax.set_title(f"{name}   LF {st['load_factor']:.2f} · CV {st['cv']:.2f} · idle {st['idle_fraction']:.0%}",
-                 loc="left", fontsize=8.5)
-    ax.tick_params(labelbottom=False)
-axes[0, 0].set_ylabel("kW"); axes[1, 0].set_ylabel("kW")
-plt.suptitle("The four process classes, a fortnight each", y=1.01, fontsize=10, fontweight="bold")
-save("06_process_classes")
+    ax.set_title(f"{name}: load factor {st['load_factor']:.2f}, "
+                 f"CV {st['cv']:.2f}, idle {st['idle_fraction']:.0%}", fontsize=9)
+for ax in axes[1]:
+    fs.days(ax, s.index, weekly=True)
+axes[0, 0].set_ylabel("heat (kW)"); axes[1, 0].set_ylabel("heat (kW)")
+fs.title(fig, "The four process classes, a fortnight each")
+save(fig, "06_process_classes")
 plt.show()
 """)
 
 code(r"""
-fig, ax = plt.subplots(figsize=(9, 3.2))
-for name, style in zip(["continuous", "semi_continuous", "campaign", "batch"],
-                       ["-", "-", "--", "--"]):
+fig, ax = plt.subplots(figsize=fs.size(1, height=3.2))
+names = ["continuous", "semi_continuous", "campaign", "batch"]
+for name, colour in zip(names, fs.ramp("heat", 4, light=0.5, dark=0.5)):
     frame = lc.generate(annual_mwh=10_000, heat_to_cold=None, elec_share=0.0,
                         process_class=name, seed=5)
-    ax.plot(lc.duration_curve(frame["heat_kw"]), ls=style, lw=1.5, label=name)
-ax.set_xlabel("hours at or above"); ax.set_ylabel("share of peak")
-ax.set_title("Load duration curves — the flat top is the installed capacity", loc="left")
-ax.legend()
-save("06_duration_curves")
+    ax.plot(lc.duration_curve(frame["heat_kw"]), color=colour, lw=1.8, label=name)
+ax.set_xlabel("hours in the year at or above it"); ax.set_ylabel("share of the peak")
+ax.set_xlim(0, 8760)
+ax.legend(loc="upper right")
+fs.title(fig, "Load duration curves: the flat top is the cap")
+save(fig, "06_duration_curves")
 plt.show()
 """)
 
 md(r"""
 The flat top is the capacity cap doing its work: without it the lognormal tail
 runs away and the load factor collapses, even when the coefficient of variation
-is correct. The two dashed classes have an on/off mask, which is what puts a
-long near-zero tail on the right — spread alone cannot produce that.
+is correct. The campaign and batch classes have an on/off mask, which is what
+puts a long near-zero tail on the right — spread alone cannot produce that.
 """)
 
 # =============================================================================
@@ -482,19 +482,18 @@ achievable — because in its input data, the carriers never disagree.
 """)
 
 code(r"""
-fig, axes = plt.subplots(1, 2, figsize=(9, 3.0), sharey=True)
+fig, axes = plt.subplots(1, 2, figsize=fs.size(1, height=3.1), sharey=True)
 for ax, (frame, title) in zip(axes, [
-        (published, "disaggregated construction"),
-        (gen, "loadcast, correlation asked for = 0.60")]):
+        (published, "every carrier a multiple of one profile"),
+        (gen, "loadcast, with a correlation of 0.60 asked for")]):
     cg = lc.cross_correlogram(frame["heat_kw"], frame["cold_kw"], max_lag=36)
+    fs.reference(ax, 1.0, style=":")
     ax.plot(cg["lag_h"], cg["correlation"], color=C["cold"], lw=1.8)
-    ax.set_ylim(-0.05, 1.05)
-    ax.axhline(1.0, color="#83807a", ls=":", lw=0.9)
-    ax.set_xlabel("lag, hours"); ax.set_title(title, loc="left")
-axes[0].set_ylabel("corr(heat, cold)")
-plt.suptitle("What the carriers' relationship looks like, lag by lag",
-             y=1.03, fontsize=10, fontweight="bold")
-save("07_coincidence")
+    ax.set_ylim(-0.05, 1.08)
+    ax.set_xlabel("offset (h)"); ax.set_title(title)
+axes[0].set_ylabel("correlation of heat and cold")
+fs.title(fig, "Correlation between heat and cold at each offset")
+save(fig, "07_coincidence")
 plt.show()
 """)
 
@@ -537,16 +536,15 @@ cv_s_demo, cv_r_demo = 0.315, 0.343
 knobs = np.linspace(0, 0.95, 40)
 delivered = [fitting.correlation_transfer(k, cv_s_demo, cv_r_demo) for k in knobs]
 
-fig, ax = plt.subplots(figsize=(9, 3.0))
-ax.plot(knobs, delivered, color=C["cold"], lw=1.8, label="closed form")
-ax.axhline(delivered[0], color=C["heat"], ls="--", lw=1.2,
-           label=f"floor = CV_S²/CV_tot² = {delivered[0]:.2f}")
-ax.plot([0, 1], [0, 1], color="#83807a", ls=":", lw=1.0, label="if knob = observable")
-ax.set_xlabel("ρ, the generator's internal knob")
-ax.set_ylabel("corr of the finished profiles")
-ax.set_title("Feeding a measured correlation straight in overshoots badly", loc="left")
-ax.legend(fontsize=8)
-save("07_transfer")
+fig, ax = plt.subplots(figsize=fs.size(1, height=3.1))
+ax.plot([0, 1], [0, 1], color=fs.LIGHT, ls=":", lw=1.2, label="if the knob were what you observe")
+fs.reference(ax, delivered[0], label=f"the floor, CV_S²/CV_tot² = {delivered[0]:.2f}")
+ax.plot(knobs, delivered, color=fs.INK, lw=1.8, label="closed form")
+ax.set_xlabel("ρ, the correlation the generator sets internally")
+ax.set_ylabel("correlation of the profiles")
+ax.legend(loc="upper left")
+fs.title(fig, "Feeding a measured correlation straight in overshoots it")
+save(fig, "07_transfer")
 plt.show()
 """)
 
@@ -570,10 +568,10 @@ $q(u) = \mathrm{CV}_R^2\rho_R(u)$ decaying like $\phi^{|u|}$.
 """)
 
 code(r"""
-fig, ax = plt.subplots(figsize=(9, 3.2))
+fig, ax = plt.subplots(figsize=fs.size(1, height=3.3))
 floor = lc.correlation_floor("semi_continuous")
 rows = []
-for tau, shade in zip([0, 3, 6, 12, 24], ["#0b0b0b", "#3d5a80", C["cold"], "#7fa8d4", "#b9d0e8"]):
+for tau, shade in zip([0, 3, 6, 12, 24], fs.ramp("cold", 5, light=0.55, dark=0.5)[::-1]):
     frame = lc.generate(annual_mwh=10_000, heat_to_cold=2.0, elec_share=0.2,
                         carrier_correlation=0.75, carrier_lag_h={"cold": tau}, seed=11)
     cg = lc.cross_correlogram(frame["heat_kw"], frame["cold_kw"], max_lag=48)
@@ -581,11 +579,11 @@ for tau, shade in zip([0, 3, 6, 12, 24], ["#0b0b0b", "#3d5a80", C["cold"], "#7fa
     peak = cg.loc[cg["correlation"].idxmax()]
     rows.append({"τ (h)": tau, "peak at": int(peak["lag_h"]), "peak r": round(peak["correlation"], 3),
                  "r at lag 0": round(float(cg.loc[cg["lag_h"] == 0, "correlation"].iloc[0]), 3)})
-ax.axhline(floor, color=C["heat"], ls="--", lw=1.2, label=f"calendar floor {floor:.3f}")
-ax.set_xlabel("lag, hours"); ax.set_ylabel("corr(heat, cold)")
-ax.set_title("The peak moves to τ — and the value at lag 0 falls to the floor", loc="left")
-ax.legend(fontsize=8, ncol=3)
-save("08_lag")
+fs.reference(ax, floor, label=f"floor {floor:.2f}")
+ax.set_xlabel("offset (h)"); ax.set_ylabel("correlation of heat and cold")
+fs.legend(ax)
+fs.title(fig, "The peak moves to the lag; the value at zero offset falls to the floor")
+save(fig, "08_lag")
 plt.show()
 
 pd.DataFrame(rows).set_index("τ (h)")
@@ -663,8 +661,9 @@ given in hours** at any resolution.
 
 code(r"""
 rows = []
-fig, ax = plt.subplots(figsize=(9, 3.0))
-for freq, mult, colour in [("h", 1, "#0b0b0b"), ("30min", 2, C["cold"]), ("15min", 4, C["heat"])]:
+fig, axes = plt.subplots(3, 1, figsize=fs.size(3, height=5.0), sharex=True, sharey=True)
+for ax, (freq, mult, name) in zip(axes, [("h", 1, "hourly"), ("30min", 2, "30 minutes"),
+                                         ("15min", 4, "15 minutes")]):
     frame = lc.generate(annual_mwh=10_000, heat_to_cold=2.0, elec_share=0.2,
                         carrier_correlation=0.75, carrier_lag_h={"cold": 6},
                         freq=freq, seed=2)
@@ -675,11 +674,12 @@ for freq, mult, colour in [("h", 1, "#0b0b0b"), ("30min", 2, C["cold"]), ("15min
                  "load factor": round(st["load_factor"], 3),
                  "lag-1 per step": round(st["lag1"], 3),
                  "lag-1 per hour": round(st["lag1"] ** mult, 3)})
-    day = frame["heat_kw"].iloc[4000 * mult:4000 * mult + 48 * mult]
-    ax.plot(day.index, day.values, color=colour, lw=1.2, label=freq)
-ax.set_ylabel("kW"); ax.set_title("Two days, three resolutions", loc="left")
-ax.legend(ncol=3)
-save("10_resolution")
+    days = frame["heat_kw"].loc["2025-06-16":"2025-06-17 23:59"]    # Monday and Tuesday
+    ax.plot(days.index, days.values, color=C["heat"], lw=1.1)
+    ax.set_title(name); ax.set_ylabel("heat (kW)")
+fs.days(axes[-1], days.index)
+fs.title(fig, "Two days of heat demand at three step lengths")
+save(fig, "10_resolution")
 plt.show()
 
 pd.DataFrame(rows).set_index("freq")
@@ -718,13 +718,16 @@ print(f"demand (heat+cold+elec) {energy[['heat_kw','cold_kw','elec_kw']].sum():9
 print(f"waste heat rejected     {energy['waste_kw']:9,.1f} MWh  = {energy['waste_kw']/energy['heat_kw']:.2f} × heat")
 print(f"corr(heat, waste)       {frame['heat_kw'].corr(frame['waste_kw']):9.3f}    — a knob, not 1.000")
 
-span = frame.iloc[3000:3000 + 168]
-fig, ax = plt.subplots(figsize=(9, 3.0))
-ax.plot(span.index, span["heat_kw"], color=C["heat"], lw=1.4, label="heat demand")
-ax.plot(span.index, span["waste_kw"], color=C["waste"], lw=1.4, ls="--", label="waste heat rejected")
-ax.set_ylabel("kW"); ax.set_title("Waste heat trails the process that makes it", loc="left")
-ax.legend(ncol=2)
-save("11_waste")
+span = frame.loc["2025-05-05":"2025-05-11 23:00"]      # Monday to Sunday
+fig, ax = plt.subplots(figsize=fs.size(1, height=3.0))
+fs.weekends(ax, span.index)
+ax.plot(span.index, span["heat_kw"], color=C["heat"], lw=1.3, label="heat demand")
+ax.plot(span.index, span["waste_kw"], color=C["waste"], lw=1.3, ls="--", label="waste heat rejected")
+ax.set_ylabel("kW")
+fs.days(ax, span.index)
+fs.legend(ax)
+fs.title(fig, "Waste heat trails the process that makes it")
+save(fig, "11_waste")
 plt.show()
 """)
 
@@ -784,14 +787,14 @@ for it in range(1, 7):
     history.append((it, lf, cv, lag1))
 
 degen = pd.DataFrame(history, columns=["round", "load factor", "CV", "lag-1"]).set_index("round")
-fig, ax = plt.subplots(figsize=(9, 2.9))
-ax.plot(degen.index, degen["lag-1"], color=C["heat"], marker="o", lw=1.6, label="lag-1")
-ax.plot(degen.index, degen["CV"], color=C["cold"], marker="o", lw=1.6, label="CV")
-ax.plot(degen.index, degen["load factor"], color=C["elec"], marker="o", lw=1.6, label="load factor")
-ax.set_xlabel("refitting round"); ax.set_title(
-    "Refitting on generated output degenerates — and the load factor never warns you", loc="left")
-ax.legend(ncol=3)
-save("12_degeneration")
+fig, ax = plt.subplots(figsize=fs.size(1, height=3.0))
+shades = {"lag-1": fs.INK, "CV": fs.GREY, "load factor": fs.LIGHT}
+for key, colour in shades.items():
+    ax.plot(degen.index, degen[key], color=colour, marker="o", lw=1.6, label=key)
+ax.set_xlabel("refitting round")
+fs.legend(ax)
+fs.title(fig, "Refitting on generated output degenerates, and the imposed load factor hides it")
+save(fig, "12_degeneration")
 plt.show()
 degen.round(3)
 """)
@@ -802,9 +805,11 @@ away: the profile grows smoother and stickier every round until it has lost the
 high-frequency variability it was supposed to have. This is the standard
 degeneration of any model retrained on its own output.
 
-Note the green line. The **load factor never moves**, because it is imposed by
-the capacity cap — so an imposed statistic cannot tell you the others are
-drifting.
+Note the lightest line. The **load factor barely moves**, because it is imposed
+by the capacity cap — so an imposed statistic cannot tell you the others are
+drifting. Only at round 6, when the profile has grown so smooth that its own
+peak no longer reaches the cap, does it slip, to 0.41, and the generator say so
+in a `TargetMissedWarning`: the first visible sign, six rounds late.
 
 The AR(1) itself is not what breaks: it is stationary by construction, with
 $\operatorname{Var}[z_t]=\sigma^2$ at every $t$ and $|\phi|<1$, so it cannot

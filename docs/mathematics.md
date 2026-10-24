@@ -21,7 +21,10 @@ carriers) come out as asked.
 | $m$ | carrier: heat, cold or electricity | — |
 | $P_m(t)$ | demand for carrier $m$ at step $t$ | kW |
 | $L_m$ | level of carrier $m$, which sets its annual energy | kW |
-| $S(t)$ | calendar factor, mean one | — |
+| $S(t)$, $S_m(t)$ | calendar factor, mean one; carrier $m$'s, when it has its own | — |
+| $S^{\mathrm{mo}}_\mu$, $S^{\mathrm{wk}}_\kappa$ | month factor of month $\mu$; hour-of-week factor of hour $\kappa$ | — |
+| $\mu(t)$, $\kappa(t)$ | month of step $t$; its hour of the week, 0 to 167 | — |
+| $b$ | base load outside a schedule's shifts, relative to a full shift | — |
 | $M_m(t)$ | on/off state: 1 when running, $\lambda$ when idle | — |
 | $R_m(t)$ | residual fluctuation, mean one | — |
 | $z_m(t)$ | latent series behind $R_m$: a hidden Gaussian series the generator draws, then transforms | — |
@@ -36,7 +39,13 @@ carriers) come out as asked.
 | $\alpha$ | fraction of hours in the off state | — |
 | $q_\alpha(w)$ | the $\alpha$-quantile of $w$ | — |
 | $\lambda$ | load in the off state, relative to running | — |
-| $\eta$ | load factor: mean demand over peak demand | — |
+| $\eta$, $\eta_m$ | load factor: mean demand over peak demand; carrier $m$'s, from its rating | — |
+| $\hat P_m$ | rating of carrier $m$: the most it can draw | kW |
+| $\bar M$ | mean of the on/off state | — |
+| $p$ | share of hours a class's cap holds at the peak | — |
+| $c$, $Q_{1-p}$ | a cap, in the units of an uncapped profile; the $(1-p)$ quantile | —, — |
+| $\mathrm{CV}_M$ | coefficient of variation of the on/off state | — |
+| $X'$ | a quantity $X$ of a class built with `custom_class` | — |
 | $E$ | annual energy | MWh |
 | $k$ | ratio of annual heat to annual cold | — |
 | $s_h, s_c, s_e$ | annual shares of heat, cold and electricity | — |
@@ -216,11 +225,15 @@ $$
 P^{(i+1)} = \tilde P^{(i)}\cdot\frac{E}{\sum_t \tilde P^{(i)}(t)}
 $$
 
-where $\eta$ is the target load factor, $E$ the annual energy and $i$ the
-iteration. Capping lowers the mean, which lowers the cap, so the two steps must
-repeat; each pass moves the profile less than the one before, and a few passes
-converge. At the converged point, the fixed point of the iteration, the load
-factor is $\eta$ and the energy is $E$, both exactly.
+where $\eta$ is the target load factor (a rated carrier's own $\eta_m$, section
+12), $E$ the annual energy and $i$ the iteration. Capping lowers the mean,
+which lowers the cap, so the two steps must repeat. Each pass shrinks the
+excess over the cap by about the share of steps held at it: a shipped class
+holds 1-2 % of its hours there and converges in a few passes, a tight rating
+can hold a third and needs a few dozen. The iteration runs until the peak is
+within $10^{-12}$ of the cap. At the converged point, the fixed point of the
+iteration, the load factor is $\eta$ and the energy is $E$, both exactly, as
+long as the profile reaches the cap at all.
 
 The cap is what gets the highest hours right. Without it the coefficient of
 variation can be correct while the top of the load duration curve is badly
@@ -273,6 +286,12 @@ The closed form is exact without the on/off state and the cap; both shift it.
 The generator therefore finds the $\rho$ that delivers `carrier_correlation` by
 bisection, generating a year at each trial value, and uses this expression to
 explain and diagnose.
+
+A carrier given a calendar of its own shares less of it with the others, so
+the floor falls: cold rooms that run through the weekend, beside heat that
+stops, take the semi-continuous floor from 0.46 to about zero.
+`correlation_floor` of a `DemandSpec` measures the floor of that site on a
+generated year.
 
 ## 7. The lag
 
@@ -418,7 +437,9 @@ the same calendar factor, and all sub-hourly variation comes from the residual.
 ## 11. What is imposed, what is aimed at, and why you must not iterate
 
 Two of the four statistics are **imposed** by construction and come out exact:
-the load factor, through the cap, and the annual energy, through the level. The
+the load factor, through the cap, and the annual energy, through the level.
+The load factor holds while the profile reaches its cap; section 12 says when
+it does not, and what the generator reports then. The
 other two are **aimed at**: $\sigma$ and $\phi$ are chosen to produce a target
 spread and persistence, but the on/off state and the cap both act after them,
 so the finished profile lands near its targets rather than on them.
@@ -479,6 +500,148 @@ the targets fixed and varying only the seed is stable, as it must be:
 | 8 | 0.401 | 0.479 | 0.871 |
 
 So vary the seed for another draw of the same site; never refit on the output.
+
+## 12. Fitting the class to a site
+
+The shipped classes give a first result with nothing to tune. Everything in
+this section is what a user changes to fit a site, and how the generator keeps
+the rest consistent with the change.
+
+### The calendar
+
+A calendar is twelve month factors and 168 hour-of-week factors:
+
+$$
+S_m(t) = S^{\mathrm{mo}}_{\mu(t)}\; S^{\mathrm{wk}}_{\kappa(t)}
+$$
+
+where $\mu(t)$ is the month of step $t$, $\kappa(t)$ its hour of the week
+(Monday 00:00 is 0, Sunday 23:00 is 167), and each set of factors has mean one.
+A shipped class's week is its weekday factor times its hour factor, so every
+day has the same hours, scaled; a week of 168 factors lets each day keep its
+own, such as a Saturday morning shift. The month still scales the whole week,
+so the daily pattern cannot change with the season. The calendar carries the
+carrier's index $m$ because a spec may give one carrier a calendar of its own;
+otherwise $S_m = S$, the class's.
+
+`Calendar.from_schedule` sets $S^{\mathrm{wk}}_\kappa = 1$ in the hours a shift
+runs and $b$ outside them, where $b$ is the base load relative to a full shift,
+before normalising. Twelve monthly energies $E_\mu$, as on the bills, set the
+months through
+
+$$
+S^{\mathrm{mo}}_\mu \propto \frac{E_\mu}{\sum_{t \in \mu} S^{\mathrm{wk}}_{\kappa(t)}}
+$$
+
+because a month's energy depends both on its activity and on how many running
+hours it holds: a month with five Mondays holds more. `Calendar.from_series`
+estimates the two sets from a metered series by alternating this ratio with the
+mean of the series at each hour of the week divided by its month's factor; on a
+series built from a calendar it recovers that calendar to rounding.
+
+### The rating
+
+A carrier given a rating $\hat P_m$ in `rated_kw` takes its own load factor in
+the cap of section 5 (a carrier given a load factor in `load_factor` takes that
+one directly):
+
+$$
+\eta_m = \frac{1000\,E_m}{N h\,\hat P_m}
+$$
+
+where $E_m$ is the carrier's annual energy (MWh) and $Nh$ the hours in the
+year, so $1000\,E_m/(Nh)$ is its mean demand in kW. While the profile reaches
+the cap, its peak is $\hat P_m$ and its load factor $\eta_m$, both exactly. A
+rating at or below the mean demand cannot deliver the energy, and raises an
+error. A rating above the profile's own peaks is never reached: the cap does
+nothing, and the generator warns. A carrier takes a rating or a load factor,
+not both: with $E_m$ fixed, each determines the other through the expression
+above.
+
+### Changing a class's numbers
+
+The three independent factors multiply, and so does one plus their squared
+spreads:
+
+$$
+1 + \mathrm{CV}_{\text{tot}}^2 = (1 + \mathrm{CV}_S^2)(1 + \mathrm{CV}_M^2)(1 + \mathrm{CV}_R^2),
+\qquad
+\bar M = 1 - \alpha + \alpha\lambda,
+\qquad
+1 + \mathrm{CV}_M^2 = \frac{1 - \alpha + \alpha\lambda^2}{\bar M^2}
+$$
+
+where $\bar M$ is the mean of the on/off state. `custom_class` keeps the base
+class's fluctuation within its running hours, $1 + \mathrm{CV}_R^2$, and lets the
+new calendar and on/off state bring their own spread. Writing the new class's
+values with a prime,
+
+$$
+1 + \mathrm{CV}'^2_{\text{tot}} =
+(1 + \mathrm{CV}'^2_S)(1 + \mathrm{CV}'^2_M)\,
+\frac{1 + \mathrm{CV}^2_{\text{tot}}}{(1 + \mathrm{CV}^2_S)(1 + \mathrm{CV}^2_M)}
+$$
+
+The load factor follows from the cap. A shipped class's cap holds a share $p$
+of its hours at the peak, around 1 %, and the new class's cap holds the same
+share. On an uncapped reference year $P'$ of the new class,
+
+$$
+c = Q_{1-p}(P'), \qquad \eta' = \frac{\overline{\min(P', c)}}{c}
+$$
+
+where $Q_{1-p}$ is the $(1-p)$ quantile and $c$ the cap. Capping $P'$ at $c$
+and restoring its energy is then already the fixed point of section 5. Keeping
+the peak at a fixed height above the calendar's busiest hour instead fails
+wherever the fluctuation or the on/off state sets the peak: it held a third of
+a flat-calendar `continuous` profile's hours at the cap.
+
+A class whose spread is no more than its calendar's and on/off state's own,
+like the shipped `batch` (1.18 against 1.44), has no fluctuation beyond them.
+Its profile is a step function, which no cap clips by a small share, and whose
+own load factor moves by a few per cent with where the stops fall. Such a class
+takes 1 % above the highest load factor of its step functions over eight
+reference years and four carriers, so the cap trims the top step slightly and
+is reached whatever the seed. A carrier given a calendar of its own in a spec
+takes its load factor by the same two rules.
+
+Any number given explicitly replaces the derived one. On the semi-continuous
+class, at four seeds:
+
+| change | $\mathrm{CV}_S$ | $\eta'$ asked | $\eta$ delivered | $\mathrm{CV}'_{\text{tot}}$ asked | delivered | hours at the cap |
+|---|---|---|---|---|---|---|
+| none | 0.31 | 0.401 | 0.401 | 0.48 | 0.47 | 0.8 % |
+| one shift, 6-14 h, Mon-Fri | 0.75 | 0.245 | 0.245 | 0.86 | 0.84 | 0.8 % |
+| two shifts, 6-22 h, Mon-Fri | 0.62 | 0.319 | 0.319 | 0.74 | 0.73 | 0.9 % |
+| two shifts and a Saturday morning | 0.58 | 0.335 | 0.335 | 0.70 | 0.69 | 0.9 % |
+| round the clock, 7 days, flat months | 0.00 | 0.480 | 0.480 | 0.34 | 0.33 | 0.9 % |
+| stopped 20 % of hours | 0.31 | 0.331 | 0.331 | 0.72 | 0.71 | 0.8 % |
+| stopped 40 % of hours | 0.31 | 0.261 | 0.261 | 1.00 | 0.99 | 0.8 % |
+
+The schedules have a base load of a quarter of a shift; the "none" row is the
+class itself. The same holds for the other shipped classes on these calendars,
+which the tests check at several seeds.
+
+### What is checked, and when it warns
+
+After each year, `delivery_report` compares every statistic with what was
+asked, and `generate` issues a `TargetMissedWarning` for each miss, naming its
+cause:
+
+| statistic | kind | a miss | usual cause |
+|---|---|---|---|
+| annual energy | exact | any difference | none: it would be a bug |
+| load factor | exact | more than 0.5 % off | the profile never reaches its cap: a rating above its peaks, or a load factor above what the calendar allows |
+| peak, rated carriers | ceiling | above the rating | none: it would be a bug |
+| spread | aimed at | more than 25 % off | a tight cap that holds many hours at the peak; or a calendar and on/off state that already spread the profile more than the class allows, leaving no room for the fluctuation |
+| persistence, hourly | aimed at | more than 0.2 off | the on/off state chops runs (lower); the cap trims peaks that would break them (higher) |
+| heat-cold correlation | aimed at | more than 0.03 off | a request below the floor the calendars set, or above the highest reachable |
+
+The bands are wider than the shipped classes' usual gaps (section 11), so a
+shipped class at its defaults never warns, at any step length. A correlation
+left at its default is raised to the floor without a warning. With a lag, the
+correlation is not checked: the fluctuation is offset and the calendar is not,
+so no single offset shows the value asked for.
 
 ## Reference
 

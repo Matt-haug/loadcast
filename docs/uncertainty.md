@@ -3,7 +3,8 @@
 A metered series gives one demand; `loadcast` gives one per set of inputs, in
 about a second. Two kinds of study become cheap: sweeping one input to see what
 it does to a design, and sampling uncertain inputs to see what they do to it.
-This page runs both on one site. `examples/02_uncertainty.py` runs the sampled
+This page runs both on one site, then sweeps the site's structure: its
+calendar, its stops and its ratings. `examples/02_uncertainty.py` runs the sampled
 study, and `examples/build_doc_figures.py` draws the figures.
 
 ## The example site
@@ -85,6 +86,71 @@ process class's floor, `loadcast.correlation_floor(process_class)` (0.434 for
 they are correlated at least that much even when their fluctuations are
 independent, and no setting delivers less.
 
+## The site's structure
+
+The calendar, how often the process stops and each carrier's rating are inputs
+too, and sweep the same way. `custom_class` changes one thing about a shipped
+class and keeps the rest, and `rated_kw` caps a carrier; neither needs a class
+registered:
+
+```python
+from loadcast import Calendar, custom_class
+
+site = dict(annual_mwh=10_000, heat_to_cold=2.2, elec_share=0.21,
+            carrier_correlation=0.85, carrier_lag_h={"cold": 6}, seed=1)
+
+shifts = {"1 shift": [("Mon-Fri", 6, 14)], "2 shifts": [("Mon-Fri", 6, 22)],
+          "3 shifts": [("Mon-Fri", 0, 24)], "7 days": [("daily", 0, 24)]}
+by_calendar = {
+    label: loadcast.generate(process_class=custom_class(
+        "semi_continuous",
+        calendar=Calendar.from_schedule(blocks, base_load=0.25)), **site)
+    for label, blocks in shifts.items()}
+
+by_stops = {off: loadcast.generate(process_class=custom_class(
+                "semi_continuous", off_fraction=off), **site)
+            for off in (0.0, 0.1, 0.2, 0.3, 0.4)}
+
+by_rating = {kw: loadcast.generate(rated_kw={"heat": kw}, **site)
+             for kw in (800, 1000, 1200, 1400, 1600)}
+
+# or the same caps, as load factors: with the annual energy fixed, each
+# rating is a load factor (mean demand, 620 kW here, over the rating)
+by_load_factor = {lf: loadcast.generate(load_factor={"heat": lf}, **site)
+                  for lf in (0.39, 0.44, 0.52, 0.62, 0.78)}
+```
+
+The coupling is held at 0.85 here, above the floor of every calendar swept:
+two shifts on weekdays alone couple the carriers at about 0.73.
+
+![Heat peak, cold peak and 24-hour drift against the calendar, the share of hours stopped and the heat rating, each swept on its own](assets/figures/uncertainty_structure.png)
+
+*Each input swept on its own, the others at the middle of their ranges; the
+band spans five seeds. The top axis of the rating column reads each rating as
+the load factor it implies.*
+
+The three inputs act on different outputs:
+
+- **The calendar** moves everything. The same energy squeezed into fewer hours
+  raises both peaks: the heat peak falls from 2534 kW on one shift to 1291 kW
+  round the clock. The fluctuation multiplies the calendar, so on a short
+  schedule the same relative fluctuation falls on fewer, busier hours, and the
+  drift falls from 4.5 to 2.5 hours as the shifts lengthen.
+- **The share of hours stopped** does the same in reverse. Stopping 40 % of the
+  hours raises the heat peak from 1546 to 2376 kW and the drift from 3.0 to 5.3
+  hours: each carrier's stops are drawn separately, correlated but not
+  identical, so one carrier stops while another runs.
+- **The rating**, or the load factor it implies, sets the heat peak exactly
+  and leaves the rest alone: the cold peak does not move, and the drift stays
+  between 2.7 and 3.0 hours. At 800 kW the heat runs at its rating a third of
+  the time, which trims its spread from 0.48 to 0.31, and the generator says so
+  in a `TargetMissedWarning`.
+
+In a sampled study, the share of hours stopped and a rating are numbers like
+any other: build the class inside the loop, as
+`custom_class("semi_continuous", off_fraction=x)`. A calendar is a category,
+like the process class: run one study per calendar.
+
 ## Sampling uncertain inputs
 
 Sampling the four ranges at once gives one year of demand per sample. Sample
@@ -110,8 +176,9 @@ to the three outputs:
 
 ![One week of cold demand for 32 sampled years, and the spread of the heat peak, cold peak and 24-hour drift across them](assets/figures/uncertainty_samples.png)
 
-*Left: the same week in each of the 32 sampled years. Right: each output's 32
-values, with lines at the 5th percentile, the median and the 95th percentile.*
+*Left: the same week in each of the 32 sampled years (thin) and their median
+(thick). Right: each output's 32 values, with lines at the 5th percentile, the
+median and the 95th percentile.*
 
 | output | P05 | median | P95 |
 |---|---|---|---|

@@ -30,6 +30,20 @@ Every public function and class of `loadcast`, documented from its docstrings. E
       show_root_heading: false
       heading_level: 3
 
+## Calendars
+
+::: loadcast.calendars
+    options:
+      show_root_heading: false
+      heading_level: 3
+
+## What was delivered against what was asked
+
+::: loadcast.checks
+    options:
+      show_root_heading: false
+      heading_level: 3
+
 ## Reference data
 
 ::: loadcast.reference

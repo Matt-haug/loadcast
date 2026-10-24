@@ -111,6 +111,9 @@ Inputs you can answer from a site visit or an energy bill:
 | `process_class` | how the process runs: continuously, in shifts, in campaigns or in batches |
 | `carrier_correlation` | how tightly the carriers move together, once lined up at their best match |
 | `carrier_lag_h` | hours by which a carrier trails the others |
+| `rated_kw` | the most each carrier can draw, kW: its cap |
+| `load_factor` | or each carrier's mean over peak demand, which sets the same cap |
+| `calendars` | a calendar of its own for a carrier that keeps other hours |
 | `seed` | random seed: the same inputs and seed give the same profiles |
 
 Every energy is *delivered*: the heat and cold the process receives, and the
@@ -120,28 +123,37 @@ page shows how to convert a bill. Where the site cannot answer, it gives
 published values by sector, temperatures included, each with its source and its
 limits. It is a guide: a sector average cannot place a single site.
 
-A process class is a rhythm calibrated on metered industrial sites: a calendar
-of how demand varies by month, weekday and hour, plus a load factor, a spread
-and a persistence. If none fits your site, build one from your own statistics:
+A process class is a rhythm calibrated on a metered industrial site: a
+calendar of how demand varies by month and by hour of the week, plus a load
+factor, a spread and a persistence. A shipped class gives a decent first result
+with nothing to tune. When you know your site differs, change what you know and
+keep the rest:
 
 ```python
-from loadcast import class_from_observations, register_class
+from loadcast import Calendar, custom_class
 
-mine = class_from_observations(
-    "my_plant", load_factor=0.45, cv=0.60, lag1=0.90,
-    calendar_from="semi_continuous",
+shifts = Calendar.from_schedule([("Mon-Fri", 6, 22), ("Sat", 6, 14)],
+                                base_load=0.25, monthly_energy=bills_mwh)
+plant = custom_class("semi_continuous", calendar=shifts, off_fraction=0.1)
+
+profiles = loadcast.generate(
+    annual_mwh=10_000, heat_to_cold=2.2, elec_share=0.21,
+    process_class=plant,                       # no registering needed
+    rated_kw={"heat": 1300, "elec": 450},      # each carrier's peak, kW
+    calendars={"cold": Calendar.flat()},       # cold rooms run all week
 )
-register_class(mine)
-profiles = loadcast.generate(process_class="my_plant", annual_mwh=5_000)
 ```
 
-Here `cv` is the coefficient of variation of the hourly demand (standard
-deviation over mean) and `lag1` its correlation with itself one hour later.
-The calendar comes from the nearest shipped class, because measuring one takes
-a full year of metering. Closed-form formulas turn the three statistics into
-the generator's parameters, with no fitting; the
+The calendar comes from your shift schedule, a week of metering or twelve
+monthly bills. The class keeps its fluctuation within the running hours and
+adapts its spread and load factor to the change. If you measured the load
+factor, the spread (`cv`, standard deviation over mean) and the persistence
+(`lag1`, the correlation with itself one hour later), `class_from_observations`
+builds a class from them directly. Closed-form formulas turn the statistics
+into the generator's parameters, with no fitting; the
 [mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/) page
-derives them.
+derives them, and the [usage](https://loadcast.readthedocs.io/en/latest/usage/)
+page shows each change.
 
 ## What it guarantees exactly
 
@@ -150,14 +162,22 @@ To floating-point precision:
 - the annual energy equals `annual_mwh`;
 - the heat-to-cold ratio equals `heat_to_cold`, and the electricity share
   `elec_share`;
-- the load factor equals the process class's, because a cap on the peak holds
-  it;
+- the load factor equals the class's, or a rated carrier's mean demand over
+  its rating, because a cap on the peak holds it -- as long as the profile
+  reaches the cap;
+- no carrier exceeds its rating;
 - every value is strictly positive.
 
 Spread and persistence are aimed at, not imposed. The on/off states and the
 cap act after them, so they land near their targets, with a bias the
 [mathematics](https://loadcast.readthedocs.io/en/latest/mathematics/) page
 reports for each class.
+
+Whatever cannot be delivered as asked draws a `TargetMissedWarning` that says
+why: a rating above the profile's own peaks, a correlation below the floor the
+calendar sets, a spread smaller than the calendar already makes.
+`loadcast.delivery_report(spec, profiles)` gives the full comparison as a
+table. The shipped classes at their defaults never warn.
 
 ## Diagnostics
 

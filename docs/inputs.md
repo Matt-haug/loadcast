@@ -67,6 +67,8 @@ passing it to `generate`.
 | `heat_to_cold` | fuel bought, and the chillers' electricity (a submeter, or rated power times running hours) | Rehfeldt et al., by subsector, in final energy | `heat_to_cold_range` |
 | `elec_share` | the electricity bill, less the chillers | JERICHO-E-usage, all of industry | `industry_composition` |
 | `process_class` | when the site runs: nights, weekends, campaigns, batches | none: see below | - |
+| its calendar | the shift schedule, the load outside it, twelve monthly bills | the class's own | - |
+| `rated_kw` | each carrier's peak demand: a bill's peak kW, the highest hourly gas flow | the class's load factor | - |
 | `carrier_correlation`, `carrier_lag_h` | rarely answerable | none: sweep them | - |
 | `waste_to_heat` | what the site rejects through its cooling towers, stacks and drains | the TNO dataset, four sectors | `waste_to_heat` |
 
@@ -139,8 +141,61 @@ source links a sector to a rhythm, and each class rests on one metered site:
 The load factor helps you decide: annual energy over the peak demand times
 8760 hours. An electricity bill often states the peak demand. The classes'
 load factors are 0.58 (`continuous`), 0.40 (`semi_continuous`), 0.50
-(`campaign`) and 0.22 (`batch`). If none fits, build a class from your own
-numbers with `class_from_observations`, as the [usage page](usage.md) shows.
+(`campaign`) and 0.22 (`batch`). The class is a starting point: change what
+you know with `custom_class`, or build a class from measured numbers with
+`class_from_observations`, as the [usage page](usage.md#fitting-the-class-to-your-site)
+shows.
+
+### Calendar
+
+A shipped class brings the calendar of the plant it was calibrated on. Yours
+is easy to come by, and worth giving when it differs:
+
+- **The week** from the shift schedule: which days, from which hour to which,
+  and the load outside the shifts. Read that base load off a meter at night or
+  at the weekend, as a fraction of the load during a shift: what keeps running
+  when production stops (space heating, compressed air, cold rooms).
+- **The months** from twelve monthly bills. A month's energy is not its
+  activity alone, because months hold different numbers of working days;
+  `with_monthly_energy` takes that out. A summer shutdown shows up on its own.
+- **Both** from a metered series, if you have one: a week of quarter-hourly
+  electricity from the grid operator gives the week; a full year gives the
+  months as well.
+
+```python
+from loadcast import Calendar, custom_class
+
+calendar = Calendar.from_schedule([("Mon-Fri", 6, 22)], base_load=0.25,
+                                  monthly_energy=bills_mwh)
+process = custom_class("semi_continuous", calendar=calendar)
+```
+
+The class keeps its fluctuation and adapts its spread and load factor to the
+new calendar. A carrier that keeps other hours, such as cold rooms through the
+weekend, takes a calendar of its own through `DemandSpec(calendars=...)`.
+
+### Rated capacity
+
+A carrier's peak demand fixes its load factor: mean demand over peak. Give it
+as `rated_kw={"heat": ...}` and it becomes the cap on that carrier, in place of
+the class's load factor; or give the load factor itself, as
+`load_factor={"heat": ...}`, if that is the number you have. A carrier takes
+one or the other: with its annual energy fixed, each implies the other. Where
+to find the peak:
+
+- **Electricity:** the peak demand on the bill, usually the highest
+  quarter-hour of the month, less what the chillers draw at that moment: their
+  electricity counts as cold here.
+- **Heat:** the highest hourly gas flow times the boilers' efficiency, from the
+  gas meter's hourly record.
+- **Cold:** the chillers' cooling capacity, if they run flat out on the hottest
+  production days.
+
+A nameplate rating or a contracted capacity is only an upper bound. Boilers
+are often installed with a spare unit or a margin, so a site may never draw its
+full rating. Given a rating the profile never reaches, the cap does nothing,
+the profile's own peaks stand, and the generator warns; give the measured peak
+where you can, and sweep between the two where you cannot.
 
 ### Coupling between carriers
 
