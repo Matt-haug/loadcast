@@ -9,6 +9,9 @@ visit or an energy bill, rather than the one the mathematics wants:
     process_class   how the process runs: continuously, in shifts, in batches
     carrier_lag_h   how far the carriers are offset from one another
     carrier_correlation   how tightly they move together when not offset
+    rated_kw        the most each carrier can draw, if known
+    load_factor     or each carrier's mean over peak demand instead
+    calendars       a calendar of its own for a carrier that keeps other hours
 
 The three shares are not independent -- they are a composition summing to one --
 so asking for two numbers and deriving the third is both easier to answer and
@@ -33,7 +36,14 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+from .calendars import Calendar
+from .classes import ProcessClass
+
 __all__ = ["CARRIERS", "ALL_CARRIERS", "DemandSpec"]
+
+# The heat-cold correlation asked for when none is given: just above the floor
+# of the default class, `semi_continuous` (0.43).
+DEFAULT_CORRELATION = 0.47
 
 # The carriers a site *consumes*. These are a composition: they sum to one.
 CARRIERS = ("heat", "cold", "elec")
@@ -91,13 +101,18 @@ class DemandSpec:
     elec_share
         Electricity as a fraction of the annual total.
     process_class
-        Name of a calibrated rhythm; see `loadcast.available_classes()`.
+        The rhythm: the name of a shipped class (see
+        `loadcast.available_classes()`), or a `ProcessClass` object, such as
+        one built with `loadcast.custom_class`, which needs no registering.
     carrier_correlation
-        Correlation wanted between the *finished* carrier profiles, at the
-        offset where they match best. It is what you observe in the output; the
-        generator solves for the internal correlation that delivers it (see
-        `loadcast.solve_correlation_knob`). It cannot go below the process
-        class's floor, `loadcast.correlation_floor`.
+        Correlation wanted between the *finished* heat and cold profiles, at
+        the offset where they match best. It is what you observe in the output;
+        the generator solves for the internal correlation that delivers it (see
+        `loadcast.solve_correlation_knob`). It cannot go below the floor the
+        calendars set, `loadcast.correlation_floor`. ``None`` (the default)
+        asks for 0.47, raised to the floor without a warning where the floor is
+        higher; a value you set and the generator cannot deliver draws a
+        `TargetMissedWarning`.
     carrier_lag_h
         Hours by which each carrier's process fluctuation trails the others,
         as ``{"cold": 6}`` for cold demand following heat by six hours.
@@ -112,6 +127,27 @@ class DemandSpec:
         Waste heat the site rejects, per unit of heat it consumes. ``None`` (the
         default) for no waste heat. Waste heat takes no share of `annual_mwh`,
         because the site does not buy it; see `waste_mwh`.
+    rated_kw
+        The most each carrier can draw, kW, as ``{"heat": 2000, "cold": 400}``:
+        the cap on its profile. A rated carrier's load factor is its mean
+        demand over its rating, in place of the process class's. Give the peak
+        the carrier actually reaches -- the measured peak demand, or the rating
+        of equipment that runs flat out at peak. An oversized nameplate leaves
+        the cap unused, and the generator warns. Carriers not named keep the
+        class's load factor.
+    load_factor
+        Each carrier's load factor, mean demand over peak, as
+        ``{"heat": 0.5}``: the other way to set its cap. Carriers not named
+        keep the class's. A carrier takes a rating or a load factor, not
+        both: with its annual energy fixed, its mean demand is fixed, so a
+        rating already is a load factor.
+    calendars
+        A calendar of its own for some carriers, as
+        ``{"cold": Calendar.from_schedule([("daily", 0, 24)])}`` for cold rooms
+        that run through the weekend. Carriers not named follow the process
+        class's calendar. The carrier keeps the class's fluctuation within
+        its running hours, and takes a load factor that suits its calendar
+        (see `loadcast.carrier_load_factors`).
     seed
         Random seed. The same seed and spec always give the same profiles.
     label
@@ -130,33 +166,78 @@ class DemandSpec:
     annual_mwh: float = 10_000.0
     heat_to_cold: float | None = None
     elec_share: float = 0.2
-    process_class: str = "semi_continuous"
-    carrier_correlation: float = 0.47
+    process_class: str | ProcessClass = "semi_continuous"
+    carrier_correlation: float | None = None
     carrier_lag_h: dict[str, int] = field(default_factory=dict)
     waste_to_heat: float | None = None
     seed: int = 42
     label: str = ""
+    rated_kw: dict[str, float] = field(default_factory=dict)
+    calendars: dict[str, Calendar] = field(default_factory=dict)
+    load_factor: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.annual_mwh <= 0:
             raise ValueError(f"annual_mwh must be positive, got {self.annual_mwh}")
-        if not -1.0 <= self.carrier_correlation <= 1.0:
+        if (self.carrier_correlation is not None
+                and not -1.0 <= self.carrier_correlation <= 1.0):
             raise ValueError(
                 f"carrier_correlation must be in [-1, 1], "
                 f"got {self.carrier_correlation}"
             )
-        unknown = set(self.carrier_lag_h) - set(ALL_CARRIERS)
-        if unknown:
-            raise ValueError(
-                f"carrier_lag_h has unknown carriers {sorted(unknown)}; "
-                f"expected any of {list(ALL_CARRIERS)}"
-            )
+        for name, mapping in (("carrier_lag_h", self.carrier_lag_h),
+                              ("rated_kw", self.rated_kw),
+                              ("load_factor", self.load_factor),
+                              ("calendars", self.calendars)):
+            unknown = set(mapping) - set(ALL_CARRIERS)
+            if unknown:
+                raise ValueError(
+                    f"{name} has unknown carriers {sorted(unknown)}; "
+                    f"expected any of {list(ALL_CARRIERS)}"
+                )
+        for carrier, rating in self.rated_kw.items():
+            if not rating > 0:
+                raise ValueError(
+                    f"rated_kw for {carrier} must be positive, got {rating}")
+        for carrier, value in self.load_factor.items():
+            if not 0.0 < value < 1.0:
+                raise ValueError(
+                    f"load_factor for {carrier} must be in (0, 1), got {value}")
+        for carrier in sorted(set(self.rated_kw) & set(self.load_factor)):
+            raise ValueError(self._both_message(carrier))
+        for carrier, calendar in self.calendars.items():
+            if not isinstance(calendar, Calendar):
+                raise TypeError(
+                    f"calendars[{carrier!r}] must be a loadcast.Calendar, "
+                    f"got {type(calendar).__name__}")
         if self.waste_to_heat is not None and self.waste_to_heat < 0:
             raise ValueError(
                 f"waste_to_heat cannot be negative, got {self.waste_to_heat}")
         # Validates elec_share and heat_to_cold, and fails now rather than deep
         # inside the generator.
         _shares_from_ratio(self.heat_to_cold, self.elec_share)
+
+    def _both_message(self, carrier: str) -> str:
+        """Why a carrier cannot take a rating and a load factor at once."""
+        shares = dict(zip(CARRIERS, _shares_from_ratio(self.heat_to_cold,
+                                                       self.elec_share)))
+        energy = (self.annual_mwh * shares[carrier] if carrier in shares
+                  else (self.annual_mwh * shares["heat"]
+                        * float(self.waste_to_heat or 0.0)))
+        mean_kw = energy * 1000.0 / 8760.0
+        rating = self.rated_kw[carrier]
+        return (f"give {carrier} a rated_kw or a load_factor, not both: with "
+                f"{energy:.0f} MWh a year its mean demand is {mean_kw:.0f} kW, "
+                f"so a rating of {rating:.0f} kW already is a load factor of "
+                f"{mean_kw / rating:.3f}, and a load factor of "
+                f"{self.load_factor[carrier]:.3f} a rating of "
+                f"{mean_kw / self.load_factor[carrier]:.0f} kW")
+
+    @property
+    def correlation_target(self) -> float:
+        """The heat-cold correlation asked for: `carrier_correlation`, or 0.47."""
+        return (DEFAULT_CORRELATION if self.carrier_correlation is None
+                else float(self.carrier_correlation))
 
     @property
     def composition(self) -> tuple[float, float, float]:

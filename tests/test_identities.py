@@ -140,7 +140,9 @@ def test_correlation_floor_is_reached_with_independent_residuals(process_class):
     """
     spec = lc.DemandSpec(annual_mwh=10_000, heat_to_cold=2.0, elec_share=0.2,
                          process_class=process_class, carrier_correlation=0.0)
-    frame = generator.build_profiles(spec, INDEX, knob=0.0)
+    # The knob is set by hand to test the identity, so skip the checks: a
+    # request of zero is below the floor on purpose.
+    frame = generator.build_profiles(spec, INDEX, knob=0.0, check=False)
     achieved = float(frame["heat_kw"].corr(frame["cold_kw"]))
     predicted = lc.correlation_floor(process_class)
     # The closed form is exact for the unmasked model; the on/off mask and the

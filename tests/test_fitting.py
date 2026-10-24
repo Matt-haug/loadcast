@@ -43,7 +43,9 @@ def test_class_from_observations_validates():
 def test_off_fraction_switches_the_mode():
     """A spread alone makes a profile low; only a mask makes it off."""
     smooth = fitting.class_from_observations("s", 0.5, 0.6, 0.9)
-    bimodal = fitting.class_from_observations("b", 0.5, 0.6, 0.9,
+    # A process off a third of the time spreads by more than 0.6 on that
+    # alone, so its measured spread is larger.
+    bimodal = fitting.class_from_observations("b", 0.35, 1.0, 0.9,
                                               off_fraction=0.35)
     assert smooth.mode == "lognormal"
     assert bimodal.mode == "onoff"

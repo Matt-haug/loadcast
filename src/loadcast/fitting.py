@@ -35,11 +35,15 @@ gives the whole cross-correlogram once a lag is in play.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import replace
 
 import numpy as np
 
+from .calendars import Calendar
+from .checks import TargetMissedWarning
 from .classes import ProcessClass, get_class, load_classes
+from .spec import DemandSpec
 
 __all__ = [
     "sigma_from_cv", "cv_from_sigma",
@@ -47,7 +51,7 @@ __all__ = [
     "residual_correlation", "latent_correlation",
     "combine_cv", "split_cv",
     "correlation_floor", "correlation_transfer",
-    "class_from_observations", "bias_report",
+    "class_from_observations", "custom_class", "bias_report",
 ]
 
 
@@ -161,7 +165,7 @@ def correlation_transfer(latent_corr: float, calendar_cv: float,
     return float((calendar_cv**2 + q + calendar_cv**2 * q) / total_squared)
 
 
-def correlation_floor(process_class: str | ProcessClass,
+def correlation_floor(process_class: str | ProcessClass | DemandSpec,
                       index=None) -> float:
     """Lowest cross-carrier correlation reachable with independent residuals.
 
@@ -173,12 +177,17 @@ def correlation_floor(process_class: str | ProcessClass,
     because the processes are linked.
 
     No non-negative internal correlation delivers a correlation below this
-    floor.
+    floor. Pass a class (or its name) for the formula above, which assumes
+    every carrier follows the class's calendar. Pass a `DemandSpec` for the
+    floor of that site, measured on a generated year: a carrier with a calendar
+    of its own, or a cap of its own, shifts it.
     """
     import pandas as pd
 
-    process = (process_class if isinstance(process_class, ProcessClass)
-               else get_class(process_class))
+    if isinstance(process_class, DemandSpec):
+        from .generator import _solve_knob
+        return float(_solve_knob(process_class)[1])
+    process = get_class(process_class)
     if index is None:
         index = pd.date_range("2025-01-01", periods=8760, freq="h")
 
@@ -245,14 +254,15 @@ def bias_report(process_class: str | None = None, seeds: int = 4,
 def class_from_observations(name: str, load_factor: float, cv: float,
                             lag1: float, calendar_from: str = "continuous",
                             off_fraction: float = 0.0, off_level: float = 0.02,
-                            description: str = "") -> ProcessClass:
+                            description: str = "",
+                            calendar: Calendar | None = None) -> ProcessClass:
     """A process class fitted to statistics you measured yourself.
 
     Supply the numbers a meter gives you and get a class the generator can
-    use. The calendar rhythm is borrowed from one of the shipped classes,
-    because a month/day/hour shape needs a full year of measurement to estimate
-    and is usually the part a user does *not* have; pass `calendar_from` to
-    choose the rhythm closest to your site's shift pattern.
+    use. The calendar is your own if you pass one -- from your schedule, your
+    meter or your monthly bills, see `loadcast.Calendar` -- and is otherwise
+    borrowed from the shipped class named by `calendar_from`. To change only
+    some of a shipped class's numbers, use `custom_class` instead.
 
     .. warning::
 
@@ -285,7 +295,7 @@ def class_from_observations(name: str, load_factor: float, cv: float,
         one hour later.
     calendar_from
         Shipped class whose calendar (month, weekday and hour factors) to
-        borrow.
+        borrow when `calendar` is not given.
     off_fraction
         Share of hours the process is off. Leave at zero unless the process
         runs or stops: spread alone cannot make a profile *off* rather than
@@ -295,6 +305,10 @@ def class_from_observations(name: str, load_factor: float, cv: float,
         Load while off, as a fraction of the running level.
     description
         Free text kept with the class.
+    calendar
+        Your own `loadcast.Calendar`. Measured statistics and a calendar must
+        come from the same site: the spread includes the calendar's, and must
+        be larger than it.
     """
     if not 0.0 < load_factor < 1.0:
         raise ValueError(f"load_factor must be in (0, 1), got {load_factor}")
@@ -304,7 +318,7 @@ def class_from_observations(name: str, load_factor: float, cv: float,
         raise ValueError(f"lag1 must be in (-1, 1), got {lag1}")
 
     template = get_class(calendar_from)
-    return replace(
+    built = replace(
         template,
         name=name,
         target_load_factor=float(load_factor),
@@ -317,3 +331,184 @@ def class_from_observations(name: str, load_factor: float, cv: float,
                                    f"calendar of {calendar_from}",
         anchor_site="user",
     )
+    if calendar is not None:
+        built = _with_calendar(built, calendar)
+        if not description:
+            built = replace(built, description="fitted from observations, "
+                                               "own calendar")
+    _warn_if_no_room(built)
+    return built
+
+
+# =============================================================================
+# Adjusting a shipped class
+# =============================================================================
+
+
+def _mask_term(off_fraction: float, off_level: float) -> tuple[float, float]:
+    """Mean of the on/off factor M, and 1 + CV[M]^2.
+
+    M is 1 with probability 1 - a and l with probability a, so
+    E[M] = 1 - a + a*l and E[M^2] = 1 - a + a*l^2.
+    """
+    mean = 1.0 - off_fraction + off_fraction * off_level
+    second = 1.0 - off_fraction + off_fraction * off_level**2
+    return mean, second / mean**2
+
+
+def _calendar_terms(calendar: Calendar) -> tuple[float, float]:
+    """1 + CV[S]^2 of a calendar over an hourly year, and its peak over its mean."""
+    import pandas as pd
+
+    index = pd.date_range("2025-01-01", periods=8760, freq="h")
+    values = calendar.factors(index)
+    return (1.0 + (values.std() / values.mean())**2,
+            float(values.max() / values.mean()))
+
+
+def _with_calendar(process: ProcessClass, calendar: Calendar) -> ProcessClass:
+    """The class with its calendar replaced, weekday and hour kept as summaries."""
+    week = np.asarray(calendar.week).reshape(7, 24)
+    return replace(process, month=calendar.month, week=calendar.week,
+                   dayofweek=tuple(week.mean(axis=1)),
+                   hour=tuple(week.mean(axis=0)))
+
+
+def _warn_if_no_room(process: ProcessClass) -> None:
+    """Warn when the calendar and on/off state already exceed the class's spread."""
+    calendar_term, _ = _calendar_terms(Calendar.of(process))
+    _, mask_term = _mask_term(process.off_fraction, process.off_level)
+    fixed = float(np.sqrt(calendar_term * mask_term - 1.0))
+    if process.target_cv <= fixed:
+        warnings.warn(
+            f"class {process.name!r}: its calendar and on/off state alone "
+            f"spread the profile by {fixed:.2f}, as much as or more than its "
+            f"spread of {process.target_cv:.2f}, so nothing is left for the "
+            f"fluctuation: the profile will be its calendar. Give it a spread "
+            f"above {fixed:.2f}.",
+            TargetMissedWarning, stacklevel=3)
+
+
+def custom_class(base: str | ProcessClass = "semi_continuous", *,
+                 name: str | None = None,
+                 calendar: Calendar | None = None,
+                 load_factor: float | None = None,
+                 cv: float | None = None,
+                 lag1: float | None = None,
+                 off_fraction: float | None = None,
+                 off_level: float | None = None,
+                 description: str | None = None) -> ProcessClass:
+    """A shipped class with any of its numbers changed.
+
+    Start from the class closest to your site, which is calibrated on a
+    metered plant, and change what you know to be different. Everything you
+    leave out is carried over so that the plant behaves as the base class does
+    *while it runs*:
+
+    spread
+        The base's fluctuation within its running hours is kept, and the new
+        calendar's and on/off state's spread added to it, since one plus the
+        squared spread multiplies across independent factors:
+        ``1 + cv^2 = (1 + cv_calendar^2)(1 + cv_onoff^2)(1 + cv_fluctuation^2)``.
+    load factor
+        The cap clips as many hours as the base's does: a shipped class holds
+        1-2 % of its hours at the peak, and the new class holds the same share
+        on its own calendar and on/off state (see
+        `loadcast.generator.matched_load_factor`).
+    persistence
+        Unchanged.
+
+    So ``custom_class("semi_continuous", off_fraction=0.3)`` is the same plant
+    stopping 30 % of the time, and ``custom_class("semi_continuous",
+    calendar=two_shifts)`` the same plant on your shifts. Give a number
+    explicitly to override what is derived.
+
+    The result needs no registering: pass it as `process_class`. Register it
+    with `register_class` only to call it by name.
+
+    Parameters
+    ----------
+    base
+        Name of a shipped class, or a `ProcessClass`.
+    name
+        Name for the new class; by default the base's with ``"+custom"``.
+    calendar
+        A `loadcast.Calendar`: from a schedule, a meter or monthly bills.
+    load_factor, cv, lag1
+        Load factor, spread (coefficient of variation, calendar included) and
+        hourly lag-1 autocorrelation of the finished profile.
+    off_fraction, off_level
+        Share of hours the process is stopped, and its load while stopped
+        relative to running. A base that never stops gets an idle level of
+        0.02 unless you give one.
+    description
+        Free text kept with the class.
+    """
+    origin = get_class(base)
+    given = [label for label, value in (
+        ("calendar", calendar), ("load_factor", load_factor), ("cv", cv),
+        ("lag1", lag1), ("off_fraction", off_fraction),
+        ("off_level", off_level)) if value is not None]
+    off = origin.off_fraction if off_fraction is None else float(off_fraction)
+    if off_level is None:
+        level = origin.off_level if origin.off_fraction > 0 else 0.02
+    else:
+        level = float(off_level)
+    if not 0.0 <= off < 1.0:
+        raise ValueError(f"off_fraction must be in [0, 1), got {off}")
+    if not 0.0 <= level < 1.0:
+        raise ValueError(f"off_level must be in [0, 1), got {level}")
+
+    old_calendar = Calendar.of(origin)
+    new_calendar = old_calendar if calendar is None else calendar
+    old_term, _ = _calendar_terms(old_calendar)
+    new_term, _ = _calendar_terms(new_calendar)
+    _, old_mask = _mask_term(origin.off_fraction, origin.off_level)
+    _, new_mask = _mask_term(off, level)
+
+    reshaped = calendar is not None or (off, level) != (
+        origin.off_fraction, origin.off_level if origin.off_fraction > 0 else 0.02)
+    if cv is None and not reshaped:
+        cv = origin.target_cv
+    elif cv is None:
+        # A base whose calendar and stops already exceed its spread (batch)
+        # has no fluctuation beyond them, and keeps none on the new calendar.
+        fluctuation = max((1 + origin.target_cv**2) / (old_term * old_mask), 1.0)
+        cv = float(np.sqrt(max(new_term * new_mask * fluctuation - 1.0, 1e-6)))
+    if lag1 is None:
+        lag1 = origin.target_lag1
+    if load_factor is not None and not 0.0 < load_factor < 1.0:
+        raise ValueError(f"load_factor must be in (0, 1), got {load_factor}")
+    if cv <= 0:
+        raise ValueError(f"cv must be positive, got {cv}")
+    if not -1.0 < lag1 < 1.0:
+        raise ValueError(f"lag1 must be in (-1, 1), got {lag1}")
+
+    built = replace(
+        origin,
+        name=name or f"{origin.name}+custom",
+        target_load_factor=(origin.target_load_factor if load_factor is None
+                            else float(load_factor)),
+        target_cv=float(cv),
+        target_lag1=float(lag1),
+        mode="onoff" if off > 0 else "lognormal",
+        off_fraction=off,
+        off_level=level if off > 0 else 0.0,
+        description=description or (f"{origin.name}, with "
+                                    f"{', '.join(given) or 'nothing'} changed"),
+        anchor_site="user",
+    )
+    if calendar is not None:
+        built = _with_calendar(built, calendar)
+    if load_factor is None and (reshaped or cv != origin.target_cv
+                                or lag1 != origin.target_lag1):
+        # Anything that reshapes the uncapped profile moves the cap that clips
+        # the base's share of hours: derive the load factor that keeps it.
+        from .generator import matched_load_factor
+        built = replace(built, target_load_factor=matched_load_factor(origin,
+                                                                      built))
+    if "cv" in given:
+        # A derived spread inherits the base's room for fluctuation, whatever
+        # it is; only a spread you set can contradict the calendar.
+        _warn_if_no_room(built)
+    return built

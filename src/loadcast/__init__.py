@@ -48,6 +48,7 @@ from __future__ import annotations
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _version
 
+from .calendars import Calendar
 from .classes import (
     ProcessClass,
     available_classes,
@@ -59,13 +60,16 @@ from .fitting import (
     bias_report,
     class_from_observations,
     correlation_floor,
+    custom_class,
     correlation_transfer,
     phi_from_lag1,
     sigma_from_cv,
 )
 from . import reference
+from .checks import TargetMissedWarning, delivery_report
 from .generator import (
     build_profiles,
+    carrier_load_factors,
     generate,
     rescale_persistence,
     solve_correlation_knob,
@@ -92,9 +96,11 @@ __all__ = [
     # generating
     "generate", "build_profiles", "solve_correlation_knob",
     "step_hours", "rescale_persistence",
-    # process classes
+    # process classes, and adjusting them
     "ProcessClass", "available_classes", "get_class", "load_classes",
-    "register_class",
+    "register_class", "custom_class", "Calendar", "carrier_load_factors",
+    # what was delivered against what was asked
+    "delivery_report", "TargetMissedWarning",
     # fitting to your own measurements
     "class_from_observations", "bias_report",
     "sigma_from_cv", "phi_from_lag1",

@@ -71,6 +71,11 @@ class ProcessClass:
         Anonymised label of the metered site it was calibrated against.
     n_hours
         Length of the series it was calibrated on.
+    week
+        Optional 168 hour-of-week factors, Monday 00:00 to Sunday 23:00. When
+        given they replace `dayofweek` times `hour`, so each day can keep its
+        own hours. Build one with `loadcast.Calendar` and pass it to
+        `loadcast.custom_class`.
     """
 
     name: str
@@ -86,6 +91,7 @@ class ProcessClass:
     description: str
     anchor_site: str
     n_hours: int
+    week: tuple[float, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.mode not in ("lognormal", "onoff"):
@@ -96,6 +102,9 @@ class ProcessClass:
                 raise ValueError(
                     f"{self.name}: {field} needs {expected} factors, got {got}"
                 )
+        if self.week is not None and len(self.week) != 168:
+            raise ValueError(
+                f"{self.name}: week needs 168 factors, got {len(self.week)}")
 
     def calendar(self, index) -> np.ndarray:
         """Calendar factor `S(t)` for every timestamp in `index`.
@@ -105,6 +114,9 @@ class ProcessClass:
         lets the same rhythm be reused at any plant size.
         """
         month = np.asarray(self.month, dtype=float)
+        if self.week is not None:
+            week = np.asarray(self.week, dtype=float)
+            return month[index.month - 1] * week[index.dayofweek * 24 + index.hour]
         dayofweek = np.asarray(self.dayofweek, dtype=float)
         hour = np.asarray(self.hour, dtype=float)
         return (month[index.month - 1]
@@ -173,8 +185,14 @@ def available_classes(include_registered: bool = True) -> list[str]:
     return sorted(names)
 
 
-def get_class(name: str) -> ProcessClass:
-    """One process class by name, with a helpful error if it does not exist."""
+def get_class(name: str | ProcessClass) -> ProcessClass:
+    """One process class by name, with a helpful error if it does not exist.
+
+    A `ProcessClass` passed in is returned as it is, so a class built with
+    `loadcast.custom_class` can be used without registering it.
+    """
+    if isinstance(name, ProcessClass):
+        return name
     classes = load_classes()
     if name in classes:
         return classes[name]
@@ -182,6 +200,6 @@ def get_class(name: str) -> ProcessClass:
         return _REGISTERED[name]
     raise KeyError(
         f"unknown process class {name!r}; available: {available_classes()}. "
-        f"To build one from your own measurements, see "
-        f"loadcast.fitting.class_from_observations and register_class."
+        f"To adjust a shipped one, see loadcast.custom_class; to build one "
+        f"from your own measurements, loadcast.class_from_observations."
     )

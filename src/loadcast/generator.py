@@ -8,7 +8,7 @@ where
 
     P_m(t)   demand for carrier m at hour t, kW
     L_m      level, set so the annual energy matches the spec exactly
-    S(t)     calendar factor: month x day-of-week x hour, mean one
+    S(t)     calendar factor: month x hour of the week, mean one
     M_m(t)   on/off state, 1 when running and `off_level` when idle
     R_m(t)   residual fluctuation, lognormal AR(1) with mean one
     tau_m    carrier m's lag in hours
@@ -21,9 +21,11 @@ minus 50 kW" means something different at each scale, and it can drive the load
 negative. Every factor here is positive and has mean one, so the level `L_m`
 alone sets the energy and nothing downstream can drift it.
 
-The calendar is shared and never shifted. A factory's opening hours are common
-to all its carriers -- heat and refrigeration do not take the weekend off at
-different times -- so only the *process fluctuation* carries a lag. The shift
+The calendar is never shifted, and shared unless the spec gives a carrier one
+of its own. A factory's opening hours are common to its carriers -- heat and
+production refrigeration do not take the weekend off at different times -- so
+only the *process fluctuation* carries a lag. Cold rooms that run through the
+weekend are the exception a carrier's own calendar is for. The shift
 wraps around the end of the year, so it only reorders the hours: lagging a
 carrier leaves every one of its own statistics (load factor, spread,
 persistence, annual energy) exactly unchanged. The lag therefore changes only
@@ -32,13 +34,16 @@ how the carriers relate to one another.
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import numpy as np
 import pandas as pd
 
 from .classes import ProcessClass, get_class
 from .spec import ALL_CARRIERS, CARRIERS, COLUMN_NAMES, DemandSpec
 
-__all__ = ["generate", "build_profiles", "solve_correlation_knob"]
+__all__ = ["generate", "build_profiles", "solve_correlation_knob",
+           "carrier_load_factors", "matched_load_factor"]
 
 
 # =============================================================================
@@ -111,7 +116,8 @@ def onoff_from_latent(latent: np.ndarray, off_fraction: float,
 
 
 def cap_to_rated_capacity(profile: np.ndarray, target_load_factor: float,
-                          iterations: int = 8) -> np.ndarray:
+                          max_iterations: int = 2000,
+                          tolerance: float = 1e-12) -> np.ndarray:
     """Impose a rated capacity while preserving annual energy.
 
     A plant cannot draw more than it has installed, so its load duration curve
@@ -120,10 +126,14 @@ def cap_to_rated_capacity(profile: np.ndarray, target_load_factor: float,
 
         P~ = min(P, mean(P)/eta);   P <- P~ * E / sum(P~)
 
-    The map is a contraction and converges in a handful of passes. At the fixed
-    point the load factor is `eta` and the energy is `E`, both exactly. This is
-    what makes the *extreme quantiles* right: the coefficient of variation can
-    be correct while the top of the load duration curve is badly wrong.
+    The map is a contraction: each pass shrinks the excess over the cap by
+    about the share of steps held at the cap. A shipped class holds 1-2 % of
+    its hours there and converges in a few passes; a tight rating can hold a
+    third of them, and needs a few dozen. It runs until the peak is within
+    `tolerance` of the cap. At the fixed point the load factor is `eta` and the
+    energy is `E`, both exactly. This is what makes the *extreme quantiles*
+    right: the coefficient of variation can be correct while the top of the
+    load duration curve is badly wrong.
     """
     if not 0.0 < target_load_factor < 1.0:
         return profile
@@ -132,11 +142,14 @@ def cap_to_rated_capacity(profile: np.ndarray, target_load_factor: float,
     energy = float(out.sum())
     if energy <= 0:
         return out
-    for _ in range(iterations):
+    for _ in range(max_iterations):
         mean = float(out.mean())
         if mean <= 0:
             break
-        out = np.minimum(out, mean / target_load_factor)
+        cap = mean / target_load_factor
+        if out.max() <= cap * (1.0 + tolerance):
+            break
+        out = np.minimum(out, cap)
         total = float(out.sum())
         if total > 0:
             out *= energy / total
@@ -212,13 +225,23 @@ def _shift(values: np.ndarray, lag: int) -> np.ndarray:
 # =============================================================================
 
 
+def _carrier_shapes(process: ProcessClass, spec: DemandSpec,
+                    index: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
+    """The class's calendar, and each carrier's: its own where the spec gives one."""
+    class_shape = process.calendar(index)
+    shapes = np.vstack([spec.calendars[carrier].factors(index)
+                        if carrier in spec.calendars else class_shape
+                        for carrier in ALL_CARRIERS])
+    return class_shape, shapes
+
+
 def _stochastic_factors(process: ProcessClass, spec: DemandSpec,
                         index: pd.DatetimeIndex, knob: float,
                         ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Calendar, masks and residuals, before any lag is applied."""
+    """Calendars, masks and residuals, before any lag is applied."""
     n = len(index)
     rng = np.random.default_rng(spec.seed)
-    shape = process.calendar(index)
+    class_shape, shapes = _carrier_shapes(process, spec, index)
     phi = rescale_persistence(process.target_lag1, step_hours(index))
 
     # Two independent sets of correlated latents: one drives the on/off state,
@@ -228,17 +251,130 @@ def _stochastic_factors(process: ProcessClass, spec: DemandSpec,
     masks = onoff_from_latent(mask_latent, process.off_fraction,
                               process.off_level)
 
-    # The residual supplies only the spread the calendar and mask have not.
-    reference = shape * masks[0]
+    # The residual supplies only the spread the class's own calendar and mask
+    # have not. It is set on the class's calendar even for a carrier given a
+    # calendar of its own, so that carrier keeps the class's fluctuation within
+    # its running hours.
+    reference = class_shape * masks[0]
     cv = residual_cv_for(process.target_cv, reference)
     sigma = float(np.sqrt(np.log1p(cv**2)))
     residual_latent = correlated_ar1(n, len(ALL_CARRIERS), phi, sigma, knob, rng)
     residuals = lognormal_from_latent(residual_latent, sigma)
-    return shape, masks, residuals
+    return shapes, masks, residuals
+
+
+_REFERENCE_YEAR = pd.date_range("2025-01-01", periods=8760, freq="h")
+
+
+@lru_cache(maxsize=1024)
+def _reference_uncapped(process: ProcessClass, calendar=None, seed: int = 0,
+                        ) -> tuple[np.ndarray, bool]:
+    """Uncapped hourly years of a class, one per carrier, and whether it has
+    no fluctuation.
+
+    On the class's calendar or another, drawn with a fixed seed and independent
+    carriers, so whatever is derived from it depends on the class and the
+    calendar alone. A class whose spread is no more than its calendar's and
+    on/off state's own (the shipped `batch`) has no fluctuation left: its
+    profile is a step function.
+    """
+    from .spec import DemandSpec as _Spec
+    calendars = ({} if calendar is None
+                 else {carrier: calendar for carrier in ALL_CARRIERS})
+    probe = _Spec(process_class=process, seed=seed, calendars=calendars)
+    shapes, masks, residuals = _stochastic_factors(process, probe,
+                                                   _REFERENCE_YEAR, 0.0)
+    no_fluctuation = bool(np.std(residuals[0]) < 1e-3)
+    return shapes * masks * residuals, no_fluctuation
+
+
+def matched_load_factor(base: ProcessClass, new: ProcessClass,
+                        calendar=None) -> float:
+    """The load factor whose cap clips as many hours on `new` as on `base`.
+
+    A shipped class's cap holds 1-2 % of its hours at the peak. Changing the
+    calendar or the on/off state changes the uncapped profile, and so the cap
+    that clips that same share: on one uncapped reference year of each, with p
+    the share the base's cap holds,
+
+        c   = the (1 - p) quantile of the new uncapped profile P
+        eta = mean(min(P, c)) / c
+
+    which is a fixed point of the cap iteration. `calendar` puts the new class
+    on another calendar, as a carrier given its own.
+
+    A base with no fluctuation beyond its calendar and on/off state gives a
+    step function, which no cap can clip by a small share, and whose own load
+    factor (mean over peak) moves by a few per cent with where the stops fall.
+    The new class then takes 1 % above the highest such load factor over eight
+    reference years and four carriers: the cap trims the highest step slightly,
+    and is reached in practice whatever the seed.
+    """
+    references, base_is_steps = _reference_uncapped(base)
+    reference = references[0]
+    capped = cap_to_rated_capacity(reference, base.target_load_factor)
+    share = float(np.mean(capped >= capped.max() * (1.0 - 1e-9)))
+    if base_is_steps:
+        own = [float(row.mean() / row.max())
+               for seed in range(8)
+               for row in _reference_uncapped(new, calendar, seed)[0]]
+        return float(min(1.01 * max(own), 0.99))
+    profile = _reference_uncapped(new, calendar)[0][0]
+    if share <= 0.0 or share >= 1.0:
+        return float(np.mean(profile) / np.max(profile))
+    cap = float(np.quantile(profile, 1.0 - share))
+    return float(np.mean(np.minimum(profile, cap)) / cap)
+
+
+def carrier_load_factors(spec: DemandSpec, total_hours: float = 8760.0,
+                         ) -> dict[str, float]:
+    """The load factor each carrier's cap holds.
+
+    A rated carrier's load factor is its mean demand over its rating,
+
+        eta_m = E_m * 1000 / (T * P_m)
+
+    with E_m its annual energy (MWh), T the hours in the year and P_m its
+    rating (kW). A rating at or below the mean demand cannot deliver the annual
+    energy, and raises.
+
+    In order, a carrier takes: its rating, if it has one; else the load factor
+    the spec gives it; else, on a calendar of its own, the load factor whose
+    cap clips as many hours on that calendar as the class's cap does on the
+    class's (`matched_load_factor`); else the class's load factor.
+    """
+    process = get_class(spec.process_class)
+    energies = dict(spec.annual_mwh_by_carrier(), waste=spec.waste_mwh)
+    factors = {}
+    for carrier in ALL_CARRIERS:
+        rating = spec.rated_kw.get(carrier)
+        if rating is None and carrier in spec.load_factor:
+            factors[carrier] = float(spec.load_factor[carrier])
+            continue
+        if rating is None and carrier in spec.calendars:
+            factors[carrier] = matched_load_factor(process, process,
+                                                   spec.calendars[carrier])
+            continue
+        if rating is None:
+            factors[carrier] = process.target_load_factor
+            continue
+        if energies[carrier] <= 0.0:
+            raise ValueError(
+                f"rated_kw names {carrier}, which this site does not have")
+        mean_kw = energies[carrier] * 1000.0 / total_hours
+        if rating <= mean_kw:
+            raise ValueError(
+                f"rated_kw for {carrier} ({rating:.0f} kW) is at or below its "
+                f"mean demand ({mean_kw:.0f} kW): no plant of that rating can "
+                f"deliver {energies[carrier]:.0f} MWh in a year")
+        factors[carrier] = mean_kw / rating
+    return factors
 
 
 def build_profiles(spec: DemandSpec, index: pd.DatetimeIndex,
-                   knob: float | None = None) -> pd.DataFrame:
+                   knob: float | None = None, check: bool = True,
+                   load_factors: dict[str, float] | None = None,
+                   ) -> pd.DataFrame:
     """Hourly demand in kW for one site, one column per carrier.
 
     Parameters
@@ -252,20 +388,28 @@ def build_profiles(spec: DemandSpec, index: pd.DatetimeIndex,
         sets internally. Leave as ``None`` to solve for the value that delivers
         `spec.carrier_correlation` in the finished profiles; pass a number to
         use it directly, which is what the solver itself does.
+    check
+        Compare what was delivered with what was asked, and issue a
+        `TargetMissedWarning` for each miss, with its cause. See
+        `loadcast.delivery_report`.
+    load_factors
+        Load factor of each carrier's cap, in place of the ones the spec
+        implies. The correlation solver uses it; leave it as ``None``.
     """
     process = get_class(spec.process_class)
-    if knob is None:
-        # With fewer than two carriers there is no cross-carrier correlation to
-        # deliver, and solving for one would only cost time.
-        knob = (solve_correlation_knob(spec, hours_per_step=step_hours(index))
-                if len(spec.active_carriers) > 1 else 0.0)
-
-    shape, masks, residuals = _stochastic_factors(process, spec, index, knob)
-
     hours_per_step = step_hours(index)
     # Energy divided by *elapsed hours*, not by the number of steps, so the mean
     # power is the same whether the year is rendered in 8760 steps or 35040.
     total_hours = float(len(index)) * hours_per_step
+    if load_factors is None:
+        load_factors = carrier_load_factors(spec, total_hours)
+    if knob is None:
+        # With fewer than two carriers there is no cross-carrier correlation to
+        # deliver, and solving for one would only cost time.
+        knob = (_solve_knob(spec, hours_per_step, load_factors)[0]
+                if len(spec.active_carriers) > 1 else 0.0)
+
+    shapes, masks, residuals = _stochastic_factors(process, spec, index, knob)
     composition = spec.composition
 
     columns: dict[str, np.ndarray] = {}
@@ -282,12 +426,12 @@ def build_profiles(spec: DemandSpec, index: pd.DatetimeIndex,
 
         # A lag is given in hours and applied in steps.
         lag = int(round(spec.carrier_lag_h.get(carrier, 0) / hours_per_step))
-        # The calendar is shared and unshifted; only the process fluctuation
-        # carries the lag.
-        profile = (shape
+        # The calendar is unshifted; only the process fluctuation carries the
+        # lag.
+        profile = (shapes[position]
                    * _shift(masks[position], lag)
                    * _shift(residuals[position], lag))
-        profile = cap_to_rated_capacity(profile, process.target_load_factor)
+        profile = cap_to_rated_capacity(profile, load_factors[carrier])
 
         target_kw = energy_mwh * 1000.0 / total_hours
         mean = float(profile.mean())
@@ -295,7 +439,11 @@ def build_profiles(spec: DemandSpec, index: pd.DatetimeIndex,
             profile * (target_kw / mean) if mean > 0 else np.zeros(len(index))
         )
 
-    return pd.DataFrame(columns, index=index)
+    frame = pd.DataFrame(columns, index=index)
+    if check:
+        from .checks import warn_misses
+        warn_misses(spec, frame)
+    return frame
 
 
 def generate(spec: DemandSpec | None = None, year: int = 2025,
@@ -312,6 +460,11 @@ def generate(spec: DemandSpec | None = None, year: int = 2025,
     persistence is rescaled so an excursion lasts the same number of *hours* at
     any resolution, and the energy is divided by elapsed hours rather than by
     step count, so the mean power is unchanged.
+
+    Whatever it cannot deliver as asked -- a load factor the cap cannot hold, a
+    spread the calendar leaves no room for, a correlation below the floor -- it
+    reports in a `TargetMissedWarning` that says why. `delivery_report` gives
+    the full comparison as a table.
 
     Two caveats apply to sub-hourly output. The process classes were calibrated
     on hourly meters, so their spread and persistence describe hourly
@@ -334,49 +487,41 @@ def generate(spec: DemandSpec | None = None, year: int = 2025,
 # The correlation knob
 # =============================================================================
 
-_KNOB_CACHE: dict[tuple, float] = {}
+# Solved knob and the reachable range, keyed by everything that sets them: the
+# class itself (not its name, so a class rebuilt under the same name is solved
+# afresh), the target, the seed, the step, and the heat and cold caps and
+# calendars.
+_KNOB_CACHE: dict[tuple, tuple[float, float, float]] = {}
 
 
-def solve_correlation_knob(spec: DemandSpec, tolerance: float = 0.005,
-                           max_iterations: int = 20,
-                           hours_per_step: float = 1.0) -> float:
-    """Internal correlation that delivers the requested finished correlation.
-
-    The correlation the generator sets, between the carriers' latent series,
-    and the correlation you observe in the finished profiles are different
-    numbers. Carriers share a calendar, so the finished profiles are correlated
-    even when their residuals are independent -- every carrier dips on a Sunday
-    and in July. The floor this imposes is
-
-        g(0) = CV_calendar^2 / CV_total^2
-
-    which for the shipped process classes runs from 0.08 to 0.64. No
-    non-negative internal correlation delivers less than the floor; asked for
-    less, the solver returns the value that comes closest.
-
-    Solved by bisection, generating a year at each trial value. The answer
-    depends only on the process class, the target and the seed, so it is
-    cached.
-
-    It is solved at *zero lag*, so `carrier_correlation` is the peak of the
-    cross-correlogram. A lag sweep then changes timing without also changing
-    how tightly the carriers move together.
-    """
-    key = (spec.process_class, round(float(spec.carrier_correlation), 6),
-           int(spec.seed), round(float(hours_per_step), 6))
+def _solve_knob(spec: DemandSpec, hours_per_step: float = 1.0,
+                load_factors: dict[str, float] | None = None,
+                tolerance: float = 0.005, max_iterations: int = 20,
+                ) -> tuple[float, float, float]:
+    """The knob, and the lowest and highest heat-cold correlation reachable."""
+    process = get_class(spec.process_class)
+    if load_factors is None:
+        load_factors = carrier_load_factors(spec, 8760.0)
+    thermal = ("heat", "cold")
+    key = (process, round(spec.correlation_target, 6), int(spec.seed),
+           round(float(hours_per_step), 6),
+           tuple(round(load_factors[c], 9) for c in thermal),
+           tuple(spec.calendars.get(c) for c in thermal))
     if key in _KNOB_CACHE:
         return _KNOB_CACHE[key]
 
-    target = float(spec.carrier_correlation)
+    target = spec.correlation_target
     # Solve on a spec with no lag, so the target is the correlogram's peak, and
-    # with two thermal carriers present whatever the real spec asks for.
+    # with both thermal carriers present whatever the real spec asks for. The
+    # caps travel as load factors, which do not depend on the probe's energies.
     probe = DemandSpec(
         annual_mwh=spec.annual_mwh,
         heat_to_cold=2.0,
         elec_share=0.2,
-        process_class=spec.process_class,
+        process_class=process,
         carrier_correlation=target,
         seed=spec.seed,
+        calendars={c: spec.calendars[c] for c in thermal if c in spec.calendars},
     )
     # A year at the target resolution, so the solved knob belongs to the same
     # persistence the real call will use.
@@ -385,8 +530,9 @@ def solve_correlation_knob(spec: DemandSpec, tolerance: float = 0.005,
                           freq=pd.Timedelta(hours=hours_per_step))
 
     def delivered(knob: float) -> float:
-        frame = build_profiles(probe, index, knob=knob)
-        return float(frame.iloc[:, 0].corr(frame.iloc[:, 1]))
+        frame = build_profiles(probe, index, knob=knob, check=False,
+                               load_factors=load_factors)
+        return float(frame["heat_kw"].corr(frame["cold_kw"]))
 
     low, high = 0.0, 0.99
     at_low, at_high = delivered(low), delivered(high)
@@ -407,5 +553,32 @@ def solve_correlation_knob(spec: DemandSpec, tolerance: float = 0.005,
                 high = middle
         answer = 0.5 * (low + high)
 
-    _KNOB_CACHE[key] = answer
-    return answer
+    _KNOB_CACHE[key] = (answer, at_low, at_high)
+    return _KNOB_CACHE[key]
+
+
+def solve_correlation_knob(spec: DemandSpec, tolerance: float = 0.005,
+                           max_iterations: int = 20,
+                           hours_per_step: float = 1.0) -> float:
+    """Internal correlation that delivers the requested finished correlation.
+
+    The correlation the generator sets, between the carriers' latent series,
+    and the correlation you observe in the finished profiles are different
+    numbers. Carriers share a calendar, so the finished profiles are correlated
+    even when their residuals are independent -- every carrier dips on a Sunday
+    and in July. The floor this imposes is
+
+        g(0) = CV_calendar^2 / CV_total^2
+
+    which for the shipped process classes runs from 0.08 to 0.64. A carrier
+    given a calendar of its own shares less with the others, and lowers it. No
+    non-negative internal correlation delivers less than the floor; asked for
+    less, the solver returns the value that comes closest, and the generator
+    warns.
+
+    Solved by bisection, generating a year at each trial value, and cached.
+    It is solved at *zero lag*, so `carrier_correlation` is the peak of the
+    cross-correlogram. A lag sweep then changes timing without also changing
+    how tightly the carriers move together.
+    """
+    return _solve_knob(spec, hours_per_step, None, tolerance, max_iterations)[0]
