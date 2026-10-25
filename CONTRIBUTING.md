@@ -34,8 +34,7 @@ the behaviour, and what you expected instead. A five-line reproduction is worth
 more than a description.
 
 Reports that the generated profiles disagree with a real site you have measured
-are **especially welcome** — the calibration archive is small (two branches,
-five series), and its narrowness is the package's main limitation.
+are **especially welcome** — the calibration archive is small, and its narrowness is the package's main limitation.
 
 ## Making a change
 
