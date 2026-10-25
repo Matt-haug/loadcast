@@ -58,9 +58,10 @@ lag_sweep = {lag: drift(**{**middle, "cold_lag_h": lag}) for lag in range(0, 13,
 
 ![Each output against each input, swept over its range with the others at the middle of theirs, with a band over five seeds](assets/figures/uncertainty_one_at_a_time.png)
 
-*Each input swept over its range, the others held at the dotted middle. Each
-row shares its scale, so the slopes compare directly. The band spans five
-seeds; the peaks have none.*
+*The shares set the peaks; the coupling and the lag set the drift. Each input
+is swept over its range, the others held at the middle of theirs (the thin
+vertical line). Each row shares its scale, so the slopes compare directly. The
+band spans five seeds; the peaks have none.*
 
 Each output answers to different inputs. The shares set the peaks: as the
 heat-to-cold ratio rises across its range, the heat peak rises from 1124 to
@@ -125,9 +126,10 @@ two shifts on weekdays alone couple the carriers at about 0.73.
 
 ![Heat peak, cold peak and 24-hour drift against the calendar, the share of hours stopped and the heat rating, each swept on its own](assets/figures/uncertainty_structure.png)
 
-*Each input swept on its own, the others at the middle of their ranges; the
-band spans five seeds. The top axis of the rating column reads each rating as
-the load factor it implies.*
+*The calendar and the stops move every output; a rating moves only the heat
+peak. Each input is swept on its own, the others at the middle of their
+ranges; the band spans five seeds. The top axis of the rating column reads each
+rating as the load factor it implies.*
 
 The three inputs act on different outputs:
 
@@ -176,7 +178,8 @@ to the three outputs:
 
 ![One week of cold demand for 32 sampled years, and the spread of the heat peak, cold peak and 24-hour drift across them](assets/figures/uncertainty_samples.png)
 
-*Left: the same week in each of the 32 sampled years (thin) and their median
+*Across 32 sampled years, the cold peak varies twofold, the heat peak and the
+drift less. Left: the same week in each sampled year (thin) and their median
 (thick). Right: each output's 32 values, with lines at the 5th percentile, the
 median and the 95th percentile.*
 
@@ -205,9 +208,10 @@ and scatters without a trend against the two shares:
 
 ![The drift of the 32 samples against each input, and the total Sobol index of each input for several seeds](assets/figures/uncertainty_sensitivity.png)
 
-*Top: the drift of each sample against each input. Bottom: each input's total
-Sobol index, one dot per study: four studies with one seed each, and one with a
-new seed in every sample.*
+*The coupling drives the drift; the two shares have no hold on it. Top: the
+drift of each sample against each input. Bottom: each input's total Sobol
+index, one dot per study: four studies with one seed each, and one with a new
+seed in every sample.*
 
 A polynomial chaos expansion puts a number on that ranking. It approximates
 each output by a polynomial in the inputs,

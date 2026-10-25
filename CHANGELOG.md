@@ -59,10 +59,16 @@ Notable changes to `loadcast`. This project follows
 
 ### Changed
 - Every figure of the documentation and the tutorial notebook shares one style,
-  `examples/figure_style.py`: a carrier keeps one colour, variants of it are
-  shades of that colour, and anything that is not a carrier is ink or grey;
-  titles at the left; weeks from Monday with the weekend shaded and day names on
-  the axis; legends kept off the data; captions on the page, not in the image.
+  `examples/figure_style.py`, after Jean-luc Doumont's *Trees, maps, and
+  theorems*: each figure's message opens its caption on the page, and the image
+  carries no title; lines are named on the plot, not in a legend; the y label
+  stands horizontal above its axis; the axes stand apart from the data, run from
+  tick to tick, and carry inward ticks; every line is solid, told apart by
+  colour -- a carrier keeps one colour, variants of it are shades of that colour,
+  anything else is ink or grey, and reference lines are light grey; weeks start
+  on Monday with the weekend shaded. The text is set in Manrope when it is
+  installed or its files sit in the folder `LOADCAST_FIGURE_FONTS` names, and in
+  matplotlib's default font otherwise; the package ships no font.
 - `carrier_correlation` defaults to `None`: 0.47, raised to the floor without a
   warning where the floor is higher, as before.
 - The documentation and `DemandSpec` state the energy basis: delivered energy,

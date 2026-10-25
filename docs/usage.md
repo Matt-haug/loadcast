@@ -40,9 +40,10 @@ calendar or any of its numbers.
 
 ![A fortnight of heat demand in each of the four process classes](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/06_process_classes.png)
 
-*Two weeks of heat demand in each class, at the same annual energy. LF is the
-load factor, CV the coefficient of variation and idle the share of hours below
-5% of the peak.*
+*The four classes range from steady running to idling half the hours. Two
+weeks of heat demand in each class, at the same annual energy, with the weekend
+shaded. CV is the coefficient of variation, and idle the share of hours below
+5 % of the peak.*
 
 ```python
 for name in loadcast.available_classes():
@@ -99,9 +100,9 @@ profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=2.2,
 
 ![One week of heat demand for the same plant on the shipped calendar, on two shifts and a Saturday morning, and on one shift](assets/figures/usage_calendar.png)
 
-*One week of heat demand, same plant, same annual energy, same seed. The
-weekend is shaded. On a shorter schedule the same energy falls in fewer hours,
-so the peaks rise.*
+*On a shorter schedule, the same energy comes in fewer, higher peaks. One week
+of heat demand from the same plant, at the same annual energy and seed, with
+the weekend shaded.*
 
 The class keeps its own fluctuation within the running hours, and derives the
 spread and load factor that go with your calendar; the
@@ -128,8 +129,9 @@ targets stay reachable. A number you give replaces the derived one.
 
 ![Two weeks of heat demand for the same plant stopped 0, 20 and 40 % of the hours](assets/figures/usage_stops.png)
 
-*Two weeks of heat demand. Each stop drops the demand to its idle level; the
-running hours carry the same energy, so the peaks rise.*
+*The more often the plant stops, the higher its peaks. Two weeks of heat
+demand: each stop drops the demand to its idle level, and the running hours
+carry the same energy.*
 
 A class built this way is an ordinary object: pass it as `process_class`, with
 no registering. `register_class` only lets you call it by name.
@@ -153,9 +155,9 @@ profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=2.2,
 
 ![Load duration curves and one week of heat demand with the cap from the class's load factor, from a load factor of 0.5, and from a rating of 1000 kW](assets/figures/usage_cap.png)
 
-*The same heat demand, capped three ways. The cap flattens the top of the load
-duration curve and leaves the rest of the year alone; the lower the cap, the
-more hours it holds.*
+*A cap flattens the year's highest hours and leaves the rest of the year
+alone. The same heat demand, capped three ways; the lower the cap, the more
+hours it holds.*
 
 The two say the same thing. The annual energy fixes the mean demand, here
 620 kW for heat, so a rating of 1000 kW is a load factor of 0.62, and a load
@@ -189,8 +191,9 @@ profiles = loadcast.generate(annual_mwh=10_000, heat_to_cold=2.2,
 
 ![One week of heat and cold demand, each over its mean, with cold on the class's calendar and then on a flat calendar of its own](assets/figures/usage_own_calendar.png)
 
-*One week of heat and cold, each divided by its mean. On its own calendar, cold
-keeps running through the shaded weekend while heat drops.*
+*On its own calendar, cold keeps running through the weekend while heat
+stops. One week of heat and cold, each divided by its own mean, with the
+weekend shaded.*
 
 The carrier keeps the class's fluctuation, and takes a load factor that suits
 its own calendar. Sharing
@@ -254,9 +257,9 @@ timing only:
 
 ![Correlation between heat and cold at each offset, for lags of 0 to 24 hours](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/08_lag.png)
 
-*Correlation between heat and cold at each offset, for cold lags τ of 0 to 24
-hours. The peak moves to τ, while the value at zero offset falls towards the
-calendar floor.*
+*A lag moves the peak of the correlation to the lag, and pulls the value at
+zero offset down to the calendar's floor. Correlation between heat and cold at
+each offset, for cold lags τ of 0 to 24 hours, each curve marked at its peak.*
 
 [Sweeps and uncertainty](uncertainty.md) shows what such a sweep does to a
 design's outputs.
@@ -278,6 +281,9 @@ sectors.
 
 ![Heat demand and the waste heat rejected, the waste trailing by two hours](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/11_waste.png)
 
+*Waste heat follows the heat demand, two hours behind. One week, with the
+weekend shaded.*
+
 ## Sub-hourly steps
 
 Pass any pandas frequency as `freq`:
@@ -293,6 +299,9 @@ meters, though, so a 15-minute profile spreads hourly behaviour over a finer
 grid; it adds no measured sub-hourly detail.
 
 ![Two days of heat demand at hourly, 30-minute and 15-minute steps](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/10_resolution.png)
+
+*Hourly, 30-minute and 15-minute steps keep the same range and rhythm. Two days
+of heat demand at each step length.*
 
 The diagnostics below read the step length from the frame's index, so their
 offsets, windows and energies are in hours at any step length:
@@ -366,9 +375,10 @@ curve = loadcast.duration_curve(profiles["heat_kw"])
 
 ![Load duration curves of the four process classes](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/06_duration_curves.png)
 
-*Load duration curves of the four process classes, as a share of the peak. The
-flat top is the cap that holds the load factor; the drop to near zero is the
-on/off state of the campaign and batch classes.*
+*The cap gives every class a flat top; the classes that stop add a tail near
+zero. Load duration curves of the four process classes, as a share of the
+peak: the flat top is the cap that holds the load factor, and the drop to near
+zero the on/off state of the campaign and batch classes.*
 
 ### The cross-correlogram
 

@@ -4,8 +4,9 @@
 
 Needs matplotlib and scipy, and takes a few minutes. Writes eight PNGs to
 docs/assets/figures/, in the house style of `figure_style.py`, which the
-tutorial notebook shares, so every figure reads as one family. Four for the
-page on sweeps and uncertainty:
+tutorial notebook shares, so every figure reads as one family. Each figure's
+message is the first sentence of its caption on the page. Four for the page on
+sweeps and uncertainty:
 
     uncertainty_one_at_a_time.png   each input swept over its range, the others
                                     held at the middle of theirs
@@ -25,6 +26,7 @@ and four for the usage page's section on fitting a class to a site:
 
 The site, the ranges and the outputs are those of docs/uncertainty.md and
 examples/02_uncertainty.py. The script prints the numbers the pages quote.
+The text is set in Manrope when matplotlib can find it; see figure_style.py.
 """
 
 from __future__ import annotations
@@ -87,8 +89,8 @@ def band(ax, x, table, key, colour, marker=None) -> None:
     """Median over seeds as a line, the range over seeds as a band."""
     median = table[key].median().to_numpy()
     low, high = table[key].min().to_numpy(), table[key].max().to_numpy()
-    ax.fill_between(x, low, high, color=colour, alpha=0.15, lw=0)
-    ax.plot(x, median, color=colour, lw=1.8, marker=marker)
+    ax.fill_between(x, low, high, color=colour, alpha=0.14, lw=0)
+    ax.plot(x, median, color=colour, marker=marker)
 
 
 # =============================================================================
@@ -123,9 +125,9 @@ def one_at_a_time() -> None:
             ax = axes[row, column]
             band(ax, x, table, key, colour)
             # The point every other column holds this input at.
-            ax.axvline(MIDDLE[name], color=fs.GREY, lw=0.8, ls=":")
+            ax.axvline(MIDDLE[name], color=fs.LIGHT, lw=1.1, zorder=1)
             if column == 0:
-                ax.set_ylabel(label)
+                fs.heading(ax, label)
             if row == 2:
                 ax.set_xlabel(LABELS[name])
         if name == "carrier_correlation":
@@ -133,12 +135,11 @@ def one_at_a_time() -> None:
             for row in range(3):
                 axes[row, column].axvspan(0.40, floor, color=fs.WASH, lw=0,
                                           zorder=0)
-                axes[row, column].set_xlim(0.40, 0.92)
-            axes[0, column].text(0.405, 0.96, "below\nthe floor",
-                                 color=fs.GREY, fontsize=7.5, va="top",
+            axes[0, column].text(0.405, 0.98, "below\nthe floor",
+                                 color=fs.GREY, fontsize=8, va="top",
                                  transform=axes[0, column].get_xaxis_transform())
-    fs.title(fig, "Each input swept over its range, the others held at the "
-                  "middle of theirs")
+    for ax in axes.flat:
+        fs.frame(ax)
     save(fig, "uncertainty_one_at_a_time")
 
     print("\nOne at a time: median over seeds at each end of each range")
@@ -196,34 +197,40 @@ def samples_and_sensitivity() -> None:
     table, frames = sampled([1] * len(SAMPLES))
 
     # --- What sampling does to the demand, and to the outputs.
-    fig = plt.figure(figsize=fs.size(1, height=3.1))
+    fig = plt.figure(figsize=fs.size(1, height=3.2))
     grid = fig.add_gridspec(1, 6)
-    ax = fig.add_subplot(grid[0, :3])
+    week_ax = fig.add_subplot(grid[0, :3])
     week = slice("2025-03-03", "2025-03-09 23:00")
     lines = np.array([frame["cold_kw"].loc[week].to_numpy() for frame in frames])
     hours = frames[0]["cold_kw"].loc[week].index
-    fs.weekends(ax, hours)
+    fs.weekends(week_ax, hours)
     for line in lines:
-        ax.plot(hours, line, color=C["cold"], lw=0.6, alpha=0.3)
-    ax.plot(hours, np.median(lines, axis=0), color=C["cold"], lw=1.8)
-    ax.set_ylabel("cold demand (kW)")
-    ax.set_title("One week of cold demand")
-    fs.days(ax, hours)
+        week_ax.plot(hours, line, color=C["cold"], lw=0.6, alpha=0.3)
+    median = np.median(lines, axis=0)
+    week_ax.plot(hours, median, color=C["cold"], lw=2.2)
+    fs.heading(week_ax, "cold demand (kW)", subtitle="one week, in each sample")
+    fs.days(week_ax, hours)
+    fs.frame(week_ax)
+    fs.say(week_ax, hours[-1], median[-1], "median", C["cold"])
+    strips = []
     rng = np.random.default_rng(0)
     for position, (key, (label, colour)) in enumerate(OUTPUTS.items()):
         ax = fig.add_subplot(grid[0, 3 + position])
         values = table[key].to_numpy()
-        ax.scatter(rng.uniform(-0.18, 0.18, len(values)), values, s=18,
+        ax.scatter(rng.uniform(-0.18, 0.18, len(values)), values, s=20,
                    color=colour, linewidth=0.6, zorder=3)
-        for q, width in ((0.05, 0.25), (0.5, 0.4), (0.95, 0.25)):
-            ax.hlines(np.quantile(values, q), -width, width, color=fs.INK,
-                      lw=1.4 if q == 0.5 else 0.8, zorder=4)
+        for q in (0.95, 0.5, 0.05):
+            ax.hlines(np.quantile(values, q), -0.3, 0.3, color=fs.INK,
+                      lw=1.6 if q == 0.5 else 1.0, zorder=4)
         ax.set_xlim(-0.5, 0.5)
         ax.set_xticks([])
         ax.spines["bottom"].set_visible(False)
-        ax.set_title(label, fontsize=8.5)
-    fs.title(fig, "32 sampled years: the demand, and the spread of three "
-                  "outputs")
+        fs.heading(ax, label)
+        fs.frame(ax, x=False)
+        strips.append((ax, values))
+    ax, values = strips[-1]
+    for name, q in (("P95", 0.95), ("median", 0.5), ("P5", 0.05)):
+        fs.say(ax, 0.3, np.quantile(values, q), name, fs.INK)
     save(fig, "uncertainty_samples")
 
     # --- The drift against each input, and the indices per seed.
@@ -233,42 +240,49 @@ def samples_and_sensitivity() -> None:
         list(range(101, 101 + len(SAMPLES))))[0]["drift"].to_numpy()
     fitted = {label: total_sobol(y) for label, y in runs.items()}
 
-    fig = plt.figure(figsize=fs.size(2, height=5.0))
+    fig = plt.figure(figsize=fs.size(2, height=5.2))
     grid = fig.add_gridspec(2, 4, height_ratios=[1.1, 1.0])
+    top = []
     for column, name in enumerate(INPUTS):
         ax = fig.add_subplot(grid[0, column],
-                             sharey=None if column == 0 else fig.axes[0])
-        ax.scatter(SAMPLES[:, column], table["drift"], s=20, color=fs.INK,
+                             sharey=None if column == 0 else top[0])
+        ax.scatter(SAMPLES[:, column], table["drift"], s=22, color=fs.INK,
                    linewidth=0.6, zorder=3)
         ax.set_xlabel(LABELS[name])
         if column == 0:
-            ax.set_ylabel("24-hour drift (h)")
-            ax.set_title("The drift of each sample against each input (seed 1)")
+            fs.heading(ax, "24-hour drift (h)",
+                       subtitle="each sample, against each input (seed 1)")
         else:
             ax.tick_params(labelleft=False)
+        top.append(ax)
+    for ax in top:
+        fs.frame(ax)
 
     ax = fig.add_subplot(grid[1, :])
-    ax.grid(axis="y", visible=False)
-    ax.grid(axis="x", visible=True)
     positions = np.arange(len(INPUTS))[::-1]
     for label, (loo, indices) in fitted.items():
         if label.startswith("seed"):
-            ax.scatter(indices, positions, s=46, color=fs.INK, linewidth=0.8,
-                       zorder=3,
-                       label=("the same seed in every sample (seeds 1-4)"
-                              if label == "seed 1" else None))
+            ax.scatter(indices, positions, s=50, color=fs.INK, linewidth=0.8,
+                       zorder=3)
         else:
             # A larger hollow ring, so it shows around the filled dots.
-            ax.scatter(indices, positions, s=140, facecolor="none",
-                       edgecolor=fs.INK, linewidth=1.4, zorder=4,
-                       label="a new seed per sample")
+            ax.scatter(indices, positions, s=150, facecolor="none",
+                       edgecolor=fs.INK, linewidth=1.5, zorder=4)
     ax.set_yticks(positions, [LABELS[name] for name in INPUTS])
-    ax.tick_params(axis="y", length=0)
-    ax.set_xlim(-0.02, 1.02)
+    ax.tick_params(axis="y", length=0, pad=14)    # clear of the dots at 0
+    ax.spines["left"].set_visible(False)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
     ax.set_xlabel("total Sobol index of the 24-hour drift")
-    ax.set_title("Which inputs matter: one dot per study")
-    fs.legend(ax)
-    fs.title(fig, "Which inputs move the 24-hour drift")
+    fs.heading(ax, subtitle="each input's index, one dot per study")
+    fs.frame(ax, y=False)
+    row = positions[INPUTS.index("carrier_correlation")]
+    dots = [fitted[f"seed {s}"][1][INPUTS.index("carrier_correlation")]
+            for s in (1, 2, 3, 4)]
+    ring = fitted["a new seed per sample"][1][INPUTS.index("carrier_correlation")]
+    fs.say(ax, min(dots), row, "the same seed in every sample, seeds 1-4",
+           fs.INK, ha="right", dx=-14)
+    fs.say(ax, ring, row, "a new seed per sample", fs.INK, ha="center",
+           va="bottom", dx=0, dy=15)
     save(fig, "uncertainty_sensitivity")
 
     print("\nSampled outputs (seed 1): P05 / median / P95")
@@ -338,19 +352,24 @@ def structure_sweeps() -> None:
             ax = axes[row, column]
             band(ax, x, grouped, key, colour, marker="o")
             if column == 0:
-                ax.set_ylabel(label)
-                ax.set_xticks(x, labels if row == 2 else [])
-            elif row < 2:
+                fs.heading(ax, label)
+                ax.set_xticks(x, [str(v) for v in labels])
+            if row < 2:
                 ax.tick_params(labelbottom=False)
             if row == 2:
                 ax.set_xlabel(title)
+    # Only once every panel holds its data: the rows share their y axes.
+    for ax in axes.flat:
+        fs.frame(ax)
     # The rating as the load factor it implies, along the top of its column.
     top = axes[0, 2].secondary_xaxis(
         "top", functions=(lambda p: heat_mean / np.maximum(p, 1e-9),
                           lambda f: heat_mean / np.maximum(f, 1e-9)))
-    top.set_xticks([0.4, 0.5, 0.6, 0.7])
+    top.set_xticks([heat_mean / r for r in HEAT_RATINGS],
+                   [f"{heat_mean / r:.2f}" for r in HEAT_RATINGS])
+    top.tick_params(direction="in", labelsize=8.5, labelcolor=fs.GREY)
+    top.spines["top"].set_position(("outward", fs.OFFSET))
     top.set_xlabel("as a load factor", fontsize=8.5, color=fs.GREY)
-    fs.title(fig, "The site's structure, one input at a time")
     save(fig, "uncertainty_structure")
 
     print("\nStructure sweeps: median over seeds")
@@ -378,7 +397,7 @@ def usage_figures() -> None:
             [("Mon-Fri", 6, 22), ("Sat", 6, 14)],
         "one shift on weekdays, base load 25 %": [("Mon-Fri", 6, 14)],
     }
-    fig, axes = plt.subplots(3, 1, figsize=fs.size(3, height=5.8), sharex=True,
+    fig, axes = plt.subplots(3, 1, figsize=fs.size(3, height=6.4), sharex=True,
                              sharey=True)
     for ax, (title, blocks) in zip(axes, schedules.items()):
         process = (CLASS if blocks is None else custom_class(
@@ -387,80 +406,93 @@ def usage_figures() -> None:
         heat = loadcast.generate(process_class=process, **USAGE_SITE)["heat_kw"]
         week = heat.loc[WEEK]
         fs.weekends(ax, week.index)
-        ax.plot(week.index, week.values, color=C["heat"], lw=1.1)
-        ax.set_title(title)
-        ax.set_ylabel("heat (kW)")
+        ax.plot(week.index, week.values, color=C["heat"], lw=1.4)
+        fs.heading(ax, "heat demand (kW)", subtitle=title)
     fs.days(axes[-1], week.index)
-    fs.title(fig, "The same plant on three calendars, at the same annual energy")
+    for ax in axes:
+        fs.frame(ax)
     save(fig, "usage_calendar")
 
     # --- Stops: the same plant, stopped more often.
-    fig, axes = plt.subplots(3, 1, figsize=fs.size(3, height=5.8), sharex=True,
+    fig, axes = plt.subplots(3, 1, figsize=fs.size(3, height=6.4), sharex=True,
                              sharey=True)
     for ax, off in zip(axes, (0.0, 0.2, 0.4)):
         process = custom_class(CLASS, off_fraction=off) if off else CLASS
         heat = loadcast.generate(process_class=process, **USAGE_SITE)["heat_kw"]
         span = heat.loc[FORTNIGHT]
         fs.weekends(ax, span.index)
-        ax.plot(span.index, span.values, color=C["heat"], lw=0.9)
+        ax.plot(span.index, span.values, color=C["heat"], lw=1.2)
         stats = loadcast.profile_statistics(heat)
-        ax.set_title(f"stopped {off:.0%} of the hours: load factor "
-                     f"{stats['load_factor']:.2f}, peak {stats['peak_kw']:.0f} kW")
-        ax.set_ylabel("heat (kW)")
+        fs.heading(ax, "heat demand (kW)",
+                   subtitle=f"stopped {off:.0%} of the hours: load factor "
+                            f"{stats['load_factor']:.2f}, peak "
+                            f"{stats['peak_kw']:.0f} kW")
     fs.days(axes[-1], span.index)
-    fs.title(fig, "The same plant, stopped more often")
+    for ax in axes:
+        fs.frame(ax)
     save(fig, "usage_stops")
 
     # --- The cap: from the class's load factor, a load factor, or a rating.
     caps = {
-        "the class's load factor, 0.40": {},
-        "load_factor={\"heat\": 0.50}": {"load_factor": {"heat": 0.50}},
-        "rated_kw={\"heat\": 1000}": {"rated_kw": {"heat": 1000.0}},
+        "class, 0.40": {},
+        "load_factor = 0.50": {"load_factor": {"heat": 0.50}},
+        "rated_kw = 1000": {"rated_kw": {"heat": 1000.0}},
     }
-    shades = fs.ramp("heat", 3, light=0.35, dark=0.45)
-    fig, (left, right) = plt.subplots(1, 2, figsize=fs.size(1, height=3.4),
-                                      width_ratios=[1, 1.6])
+    shades = fs.ramp("heat", 3, light=0.38, dark=0.45)
+    fig, (left, right) = plt.subplots(1, 2, figsize=fs.size(1, height=3.6),
+                                      width_ratios=[1, 1.5], sharey=True)
+    plateaus = []
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", loadcast.TargetMissedWarning)
         for (label, extra), colour in zip(caps.items(), shades):
             heat = loadcast.generate(**USAGE_SITE, **extra)["heat_kw"]
             curve = np.sort(heat.to_numpy())[::-1]
-            left.plot(np.arange(1, len(curve) + 1), curve, color=colour,
-                      lw=1.8, label=label)
+            left.plot(np.arange(1, len(curve) + 1), curve, color=colour)
+            plateaus.append((label, curve[0], colour))
             week = heat.loc[WEEK]
-            right.plot(week.index, week.values, color=colour, lw=1.1)
+            right.plot(week.index, week.values, color=colour, lw=1.3)
     left.set_xscale("log")
-    left.set_xlabel("hours in the year at or above it (log scale)")
-    left.set_ylabel("heat (kW)")
-    left.set_title("Load duration curves")
-    left.legend(loc="lower left")
+    left.set_xticks([1, 10, 100, 1000, 8760], ["1", "10", "100", "1000", "8760"])
+    left.minorticks_off()
+    left.set_xlabel("hours in the year at or above that demand")
+    fs.heading(left, "heat demand (kW)", subtitle="the cap from the class's load "
+                                                  "factor, a load factor, a rating")
+    fs.frame(left)
+    for label, level, colour in plateaus:
+        fs.say(left, 1.3, level, label, colour, va="top", dx=0, dy=-fs.LABEL_PAD)
     fs.weekends(right, week.index)
     fs.days(right, week.index)
-    right.set_title("The same week")
-    fs.title(fig, "The cap on heat, set three ways at the same annual energy")
+    right.tick_params(labelleft=False)
+    fs.heading(right, "", subtitle="the same three caps, over one week")
+    fs.frame(right)
     save(fig, "usage_cap")
 
     # --- A calendar for one carrier: cold rooms through the weekend.
-    fig, axes = plt.subplots(2, 1, figsize=fs.size(2, height=4.6), sharex=True,
+    fig, axes = plt.subplots(2, 1, figsize=fs.size(2, height=5.0), sharex=True,
                              sharey=True)
+    ends = []
     for ax, (title, calendars) in zip(axes, (
             ("heat and cold on the class's calendar", {}),
-            ("cold on a calendar of its own: calendars={\"cold\": Calendar.flat()}",
+            ("cold on a calendar of its own, Calendar.flat()",
              {"cold": Calendar.flat()}))):
         spec = loadcast.DemandSpec(calendars=calendars, **USAGE_SITE)
         frame = loadcast.generate(spec)
         week = frame.loc[WEEK]
         fs.weekends(ax, week.index)
+        last = {}
         for column, key in (("heat_kw", "heat"), ("cold_kw", "cold")):
-            ax.plot(week.index, week[column] / frame[column].mean(),
-                    color=C[key], lw=1.1, label=key)
+            values = week[column] / frame[column].mean()
+            ax.plot(week.index, values, color=C[key], lw=1.4)
+            last[key] = (week.index[-1], values.iloc[-1], C[key])
+        ends.append((ax, last))
         floor = loadcast.correlation_floor(spec)
-        ax.set_title(f"{title}; correlation floor {floor:.2f}")
-        ax.set_ylabel("demand / its mean")
-    fs.legend(axes[0])
+        fs.heading(ax, "demand / its own mean",
+                   subtitle=f"{title}; correlation floor {floor:.2f}")
     fs.days(axes[-1], week.index)
-    fs.title(fig, "A calendar for one carrier: cold rooms that run through the "
-                  "weekend")
+    for ax in axes:
+        fs.frame(ax)
+    for ax, last in ends:
+        fs.label_ends(ax, last)
     save(fig, "usage_own_calendar")
 
 

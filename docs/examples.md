@@ -19,12 +19,18 @@ and [Sweeps and uncertainty](uncertainty.md).
 
 ![Cross-correlogram of heat and cold: the disaggregated construction peaks at exactly 1.000, loadcast at the 0.60 asked for](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/07_coincidence.png)
 
+*Built from one profile, heat and cold correlate at exactly 1; `loadcast` gives
+the correlation asked for. Correlation between heat and cold at each offset.*
+
 Published multi-carrier data builds every carrier as a fixed multiple of one
 shared profile, $P_m(t) = \kappa_m\,p(t)$. The notebook rebuilds that
 construction and measures its heat–cold correlation: 1.000000. `loadcast`
 puts the peak where you ask.
 
 ![Delivered correlation against the requested internal correlation, with the floor set by the shared calendar](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/07_transfer.png)
+
+*The correlation you set is not the one you observe: the shared calendar adds a
+floor.*
 
 The correlation you observe is not the one the generator sets. The carriers
 share a calendar, so they stay correlated even when their fluctuations are
@@ -35,7 +41,13 @@ closed-form formula maps it to the correlation of the finished profiles.
 
 ![One week of heat, cold and electricity](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/01_one_week.png)
 
+*Each carrier follows the weekly rhythm with a fluctuation of its own. One
+week, each carrier divided by its own mean, with the weekend shaded.*
+
 ![The profile decomposed into level, calendar, modulation and residual](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/02_decomposition.png)
+
+*A profile is a calendar times a fluctuation. A fortnight of the calendar, the
+fluctuation and their product.*
 
 Each carrier is the product
 $P_m(t) = L_m \cdot S(t) \cdot M_m(t-\tau_m) \cdot R_m(t-\tau_m)$ of a level, a
@@ -46,6 +58,8 @@ level has mean 1, so the level alone sets the annual energy.
 
 ![AR(1) paths with and without the stationary variance factor, and the residual mean with and without the lognormal correction](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/03_two_constants.png)
 
+*Without its two corrections, the fluctuation drifts in spread and in mean.*
+
 Left: without the $\sqrt{1-\phi^2}$ factor, the residual takes several hundred
 hours to reach its own spread. Right: without the $-\sigma^2/2$ correction, the
 residual's mean grows with its spread, so widening the fluctuations would add
@@ -55,7 +69,13 @@ annual energy.
 
 ![A fortnight of each of the four process classes](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/06_process_classes.png)
 
+*The four classes range from steady running to idling half the hours. A
+fortnight of heat demand in each.*
+
 ![Load duration curves for the four process classes](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/06_duration_curves.png)
+
+*The cap gives every class a flat top; the classes that stop add a tail near
+zero.*
 
 The flat top of each duration curve is the cap on the peak, which holds the
 load factor exactly. The on/off state gives the campaign and batch classes their
@@ -65,6 +85,9 @@ long tail of near-zero hours, which spread alone cannot produce.
 
 ![Cross-correlograms as the lag between carriers grows](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/08_lag.png)
 
+*A lag moves the peak of the correlation to the lag, and pulls the value at
+zero offset down to the calendar's floor.*
+
 As the lag $\tau$ grows, the correlation at zero offset falls towards the
 calendar floor, which is also where a weak coupling would put it. To tell the
 two apart, look at where the correlogram peaks, not only how high.
@@ -72,6 +95,8 @@ two apart, look at where the correlogram peaks, not only how high.
 ## The step length does not change the site
 
 ![Two days at hourly, 30-minute and 15-minute resolution](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/10_resolution.png)
+
+*Hourly, 30-minute and 15-minute steps keep the same range and rhythm.*
 
 Energy, load factor and persistence measured in hours are the same on every
 grid. The process classes were calibrated on hourly meters, so detail below the
@@ -81,6 +106,8 @@ hour is drawn, not measured.
 
 ![Heat demand and waste heat rejected, with the waste trailing by two hours](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/11_waste.png)
 
+*Waste heat follows the heat demand, two hours behind.*
+
 Waste heat is a by-product the site rejects, not energy it buys, so
 `waste_to_heat` sizes it from the heat demand. It has its own residual and can
 take its own lag; here it trails the heat by two hours.
@@ -89,6 +116,10 @@ take its own lag; here it trails the heat by two hours.
 
 ![Persistence ratcheting up and spread decaying over repeated refits, while the load factor stays flat](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/12_degeneration.png)
 
+*Refitting on generated output makes the profile ever more persistent, while
+the imposed load factor barely moves.*
+
 Refit a class on its own generated output, round after round, and its
 persistence climbs towards a fixed point while its spread drains away. The load
-factor is imposed, so it stays flat and gives no warning.
+factor is imposed, so it stays flat until the profile has grown too smooth to
+reach its cap; only then does the generator warn.

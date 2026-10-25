@@ -43,10 +43,11 @@ year, 35 040 for a quarter-hourly one) and the columns `heat_kw`, `cold_kw`,
 
 ![Heat-cold cross-correlogram: the published disaggregated construction peaks at exactly 1.000; loadcast peaks at the 0.60 asked for](https://raw.githubusercontent.com/Matt-haug/loadcast/main/examples/figures/07_coincidence.png)
 
-*Correlation between heat and cold demand at each offset in hours. Left: every
-carrier as a fixed multiple of one shared profile, the construction behind
-published disaggregated data, which correlates them at 1 by algebra. Right:
-`loadcast` with `carrier_correlation=0.60`. More in the
+*Built from one profile, heat and cold correlate at exactly 1; `loadcast` gives
+the correlation asked for. Correlation between heat and cold demand at each
+offset in hours. Left: every carrier as a fixed multiple of one shared profile,
+the construction behind published disaggregated data, which correlates them at
+1 by algebra. Right: `loadcast` with `carrier_correlation=0.60`. More in the
 [tutorial notebook](https://github.com/Matt-haug/loadcast/blob/main/examples/01_tutorial.ipynb).*
 
 ## What it is for
