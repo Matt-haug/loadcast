@@ -1,17 +1,10 @@
 # AI usage disclosure
 
-> **Author: read this through and edit it before any submission.** The
-> statements in "Human review and responsibility" are assertions only you can
-> make. They are written here as a checklist of what must be true, not as a
-> claim already established. Anything below that does not match what you
-> actually did must be corrected — an incomplete or inaccurate disclosure is
-> treated by JOSS as an ethical breach.
-
 ## Tools used
 
 | Tool | Version / model | Where |
 |---|---|---|
-| Claude Code (Anthropic) | Claude Opus 5 | package code, tests, documentation, paper draft |
+| Claude Code (Anthropic) | Claude Opus 5 | package code, tests, documentation |
 | Claude Code (Anthropic) | Claude Opus 5.5 | documentation |
 
 Period of use: September 2026, during the extraction of this package from the
@@ -41,14 +34,6 @@ code before this package, and the scientific contribution is not AI-generated.
   refitting degenerates was proposed and run as part of this assistance.
 - *Documentation.* Drafting `README.md`, `docs/mathematics.md`, `docs/usage.md`
   and the docstrings.
-- *Paper drafting.* Drafting the software paper, including the comparison with
-  related software. The draft is kept outside this repository until it is
-  submitted.
-- *Literature and software survey.* Locating and summarising the neighbouring
-  tools discussed in the paper. **The author must independently verify every
-  citation and every characterisation of another project before submission.**
-
-**Where it was not used.** Not for any correspondence with editors or reviewers.
 
 ## Human review and responsibility
 
@@ -61,7 +46,7 @@ code before this package, and the scientific contribution is not AI-generated.
   as a share of the demand budget; the exclusion of temperature from the
   generator; and the scope boundaries recorded in `CONTRIBUTING.md`.
 - The author has reviewed, edited and validated the generated code,
-  documentation and paper text.
+  documentation and text.
 - The author has independently verified the claims made about other software
   and datasets, and every citation in the paper's bibliography.
 - The author has verified the numerical results reported in the documentation,
